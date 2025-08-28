@@ -22,7 +22,7 @@ const timelineContent = [
     { week: 'Week 11', title: 'Single Blitz Tournament' },
     { week: 'Week 12', title: 'Basic Endgames' },
     { week: 'Week 13', title: 'Advanced Endgames' },
-    { week: 'Week 14', title: 'Chess Festival' },
+    { week: 'Week 14', title: 'Petra Chess Competition' },
 ];
 
 const timelineData = timelineContent.map((item, index) => ({
