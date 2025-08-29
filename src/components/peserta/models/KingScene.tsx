@@ -1,4 +1,4 @@
-import React, { Suspense, useRef } from 'react';
+import React, {useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Stage } from '@react-three/drei';
 import { KingModel } from './KingModel';
