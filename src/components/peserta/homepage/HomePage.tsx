@@ -1,11 +1,11 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import Navbar from '../components/peserta/homepage/Navbar';
-import ChessPiecesGuide from '../components/peserta/homepage/ChessPieceGuide';
-import Timeline from '../components/peserta/homepage/Timeline';
-import Mission from '../components/peserta/homepage/Mission';
-import Vision from '../components/peserta/homepage/Vision';
+import Navbar from './Navbar';
+import ChessPiecesGuide from './ChessPieceGuide';
+import Timeline from './Timeline';
+import Mission from './Mission';
+import Vision from './Vision';
 
-const LazyKingScene = lazy(() => import('../components/peserta/models/KingScene'));
+const LazyKingScene = lazy(() => import('../models/KingScene'));
 
 export default function HomePage() {
   const [isHovered, setIsHovered] = useState(false);

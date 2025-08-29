@@ -14,7 +14,7 @@ import EmailVerificationSuccessPeserta from './components/peserta/register/Email
 import VerifyForgotPasswordPeserta from './components/peserta/forgot_password/VerifyForgotPassword';
 import ForgotPasswordPeserta from './components/peserta/forgot_password/ForgotPassword';
 import DashboardPeserta from './components/peserta/feature/Dashboard';
-import HomePage from "./pages/HomePage";
+import HomePage from "./components/peserta/homepage/HomePage";
 import ChessClock from './components/peserta/feature/ChessClock';
 
 function App() {
