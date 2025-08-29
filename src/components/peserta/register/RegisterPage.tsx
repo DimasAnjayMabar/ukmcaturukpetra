@@ -168,7 +168,7 @@ const RegisterPagePeserta: React.FC = () => {
             alt="UKM Chess Logo"
             className="h-8 md:h-10 w-auto transition-transform duration-200 group-hover:scale-105"
           />
-          <span className="text-center text-3xl font-bold tracking-wider text-[#0f1028] uppercase">
+          <span className="text-center text-3xl font-bold tracking-wider text-[#ece7d8] uppercase">
             UKM CHESS
           </span>
         </Link>
@@ -242,6 +242,7 @@ const RegisterPagePeserta: React.FC = () => {
               />
             </div>
 
+            {/* Email */}
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Mail className="h-5 w-5 text-[#DADBD3]/60" />

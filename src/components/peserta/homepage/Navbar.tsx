@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User, LogOut } from 'lucide-react';
+import { supabase } from '../../../db_client/client';
+import { UserProfile } from '../../../types';
 
 interface NavbarProps {
   className?: string;
+  isLoggedIn?: boolean;
+  userProfile?: UserProfile | null;
 }
 
-export default function Navbar({ className = '' }: NavbarProps) {
+export default function Navbar({ className = '', isLoggedIn = false, userProfile }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -28,6 +33,12 @@ export default function Navbar({ className = '' }: NavbarProps) {
     setIsMobileMenuOpen(false);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setShowUserMenu(false);
+    window.location.reload();
+  };
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
@@ -36,7 +47,6 @@ export default function Navbar({ className = '' }: NavbarProps) {
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
         <div className="flex items-center justify-between">
-          
           <Link to="/" className="flex items-center space-x-2 group z-10">
             <img
               src="/svg/chess logo.svg"
@@ -49,12 +59,46 @@ export default function Navbar({ className = '' }: NavbarProps) {
           </Link>
 
           <div className="hidden md:flex items-center space-x-4 z-10">
-            <Link
-              to="/peserta/login"
-              className="px-6 py-2.5 bg-[#EAC11F] text-black rounded-full font-medium hover:bg-[#d4a91a] transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              Login
-            </Link>
+            {isLoggedIn && userProfile ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-3 px-4 py-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors duration-200"
+                >
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-900 text-sm">{userProfile.name}</p>
+                    <p className="text-xs text-gray-500">NRP: {userProfile.nrp}</p>
+                  </div>
+                </button>
+
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="font-medium text-gray-900">{userProfile.name}</p>
+                      <p className="text-sm text-gray-500">{userProfile.email}</p>
+                      <p className="text-xs text-gray-400">Score: {userProfile.total_score || 0}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/peserta/login"
+                className="px-6 py-2.5 bg-[#EAC11F] text-black rounded-full font-medium hover:bg-[#d4a91a] transition-all duration-200 shadow-md hover:shadow-lg"
+              >
+                Login
+              </Link>
+            )}
           </div>
 
           <button
@@ -91,14 +135,39 @@ export default function Navbar({ className = '' }: NavbarProps) {
                 Misi
               </button>
               
-              <div className="pt-3 border-t border-white/20 mt-3">
-                <Link
-                  to="/peserta/login"
-                  className="block w-full px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200"
-                  onClick={() => setIsMobileMenuOpen(false)}
+              {isLoggedIn && userProfile && (
+                <button
+                  onClick={() => scrollToSection('features')}
+                  className="block w-full text-left px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200 font-medium"
                 >
-                  Login Peserta
-                </Link>
+                  Features
+                </button>
+              )}
+
+              <div className="pt-3 border-t border-white/20 mt-3">
+                {isLoggedIn && userProfile ? (
+                  <div className="space-y-2">
+                    <div className="px-4 py-2">
+                      <p className="text-white font-medium">{userProfile.name}</p>
+                      <p className="text-white/70 text-sm">NRP: {userProfile.nrp}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center w-full px-4 py-3 text-red-300 hover:text-red-200 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/peserta/login"
+                    className="block w-full px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Login Peserta
+                  </Link>
+                )}
               </div>
             </div>
           </div>
