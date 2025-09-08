@@ -1,4 +1,6 @@
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Lenis from '@studio-freight/lenis';
 import LoginPage from './components/admin/login_page/LoginPage'
 import RegisterPage from './components/admin/register/RegisterPage';
 import RegistrationSuccess from './components/admin/register/RegistrationSuccess';
@@ -13,18 +15,33 @@ import RegistrationSuccessPeserta from './components/peserta/register/Registrati
 import EmailVerificationSuccessPeserta from './components/peserta/register/EmailVerificationSuccess';
 import VerifyForgotPasswordPeserta from './components/peserta/forgot_password/VerifyForgotPassword';
 import ForgotPasswordPeserta from './components/peserta/forgot_password/ForgotPassword';
-import DashboardPeserta from './components/peserta/feature/Dashboard';
 import HomePage from "./components/peserta/homepage/HomePage";
 import ChessClock from './components/peserta/feature/ChessClock';
+import AttendanceList from './components/peserta/feature/DaftarKehadiran';
+import Scoreboard from './components/peserta/feature/Scoreboard';
 
 function App() {
+  useEffect(() => {
+    const lenis = new Lenis();
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
+
   return (
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
         
         {/* admin */}
-        {/* <Route path="/" element={<Navigate to="/admin/login" />} /> */}
         <Route path="/admin/login" element={<LoginPage />} />
         <Route path='/admin/registrasi' element={<RegisterPage />} />
         <Route path='/admin/verifikasi-email-registrasi' element={<RegistrationSuccess />} />
@@ -35,18 +52,17 @@ function App() {
         <Route path="/admin/forgot-password" element={<ForgotPassword />} />
 
         {/* peserta */}
-        {/* <Route path='/' element={< Navigate to="/peserta/login"/>} /> */}
         <Route path='/peserta/login' element={<LoginPagePeserta/>} />
         <Route path='/peserta/registrasi' element={<RegisterPagePeserta />} />
-        <Route path='/peserta/verifikasi-email-registrasi' element={<RegistrationSuccessPeserta />} /> 
+        <Route path='/peserta/verifikasi-email-registrasi' element={<RegistrationSuccessPeserta />} />
         <Route path='/peserta/verifikasi-registrasi-sukses' element={<EmailVerificationSuccessPeserta />} />
         <Route path='/peserta/verifikasi-email-forgot-password' element={<VerifyForgotPasswordPeserta />} />
         <Route path='/peserta/forgot-password' element={<ForgotPasswordPeserta />} />
-        <Route path='/peserta/dashboard' element={<DashboardPeserta user={{
-          name: 'test',
-          email: 'test'
-        }} />} />
+        
+        {/* peserta features */}
         <Route path='/peserta/chess-clock' element={<ChessClock />} />
+        <Route path='/peserta/daftar-kehadiran' element={<AttendanceList />} />
+        <Route path='/peserta/scoreboard' element={<Scoreboard />} />
       </Routes>
     </Router>
   );

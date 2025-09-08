@@ -1,8 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../../../db_client/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, ArrowLeft, Trophy } from 'lucide-react';
 
 interface Participant {
   id: string;
@@ -18,104 +18,58 @@ const Scoreboard: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Function to transform and rank participants
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideDown {
+        from { transform: translateY(-100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .animate-slide-down { animation: slideDown 1s ease-out; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+ 
   const transformParticipants = (data: any[]): Participant[] => {
     return data
       .filter(user => user.role === 'peserta')
       .sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
       .map((user, index) => ({
         id: user.id,
-        name: user.name || `User ${user.id}`, // Changed from full_name to name
+        name: user.name || `User ${user.id}`,
         score: user.total_score || 0,
         position: index + 1,
       }));
   };
 
-  // Initial data fetch
-  const fetchParticipants = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('user_profile')
-        .select('*')
-        .eq('role', 'peserta')
-        .order('total_score', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        const rankedParticipants = transformParticipants(data);
-        setParticipants(rankedParticipants);
-      }
-    } catch (err) {
-      console.error('Error fetching participants:', err);
-      setError('Failed to load scoreboard data');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchParticipants();
-  };
-
   useEffect(() => {
     let channel: RealtimeChannel;
-
     const setupRealtimeSubscription = async () => {
-      // Initial fetch
-      await fetchParticipants();
+      try {
+        setLoading(true);
+        const { data, error } = await supabase.from('user_profile').select('*').eq('role', 'peserta').order('total_score', { ascending: false });
+        if (error) throw error;
+        if (data) setParticipants(transformParticipants(data));
+      } catch (err) {
+        setError('Failed to load scoreboard data');
+      } finally {
+        setLoading(false);
+      }
 
-      // Set up real-time subscription
       channel = supabase
         .channel('user_profile_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-            schema: 'public',
-            table: 'user_profile',
-            filter: 'role=eq.peserta'
-          },
-          async (payload) => {
-            console.log('Real-time update received:', payload);
-            
-            // Re-fetch all participants to ensure proper ranking
-            // This is safer than trying to update individual records
-            try {
-              const { data, error } = await supabase
-                .from('user_profile')
-                .select('*')
-                .eq('role', 'peserta')
-                .order('total_score', { ascending: false });
-
-              if (error) {
-                console.error('Error refetching data:', error);
-                return;
-              }
-
-              if (data) {
-                const rankedParticipants = transformParticipants(data);
-                setParticipants(rankedParticipants);
-              }
-            } catch (err) {
-              console.error('Error updating participants:', err);
-            }
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_profile', filter: 'role=eq.peserta' }, async () => {
+            const { data, error } = await supabase.from('user_profile').select('*').eq('role', 'peserta').order('total_score', { ascending: false });
+            if (error) return;
+            if (data) setParticipants(transformParticipants(data));
           }
         )
-        .subscribe((status) => {
-          console.log('Subscription status:', status);
-          setIsConnected(status === 'SUBSCRIBED');
-        });
+        .subscribe((status) => setIsConnected(status === 'SUBSCRIBED'));
     };
 
     setupRealtimeSubscription();
 
-    // Cleanup function
     return () => {
       if (channel) {
         supabase.removeChannel(channel);
@@ -123,131 +77,91 @@ const Scoreboard: React.FC = () => {
     };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="rounded-lg bg-white p-4 sm:p-6 shadow-md">
-        <div className="flex items-center space-x-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
-          <span>Loading scoreboard...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg bg-white p-4 sm:p-6 shadow-md text-red-500">
-        {error}
-        <button 
-          onClick={handleRefresh}
-          className="ml-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100">Loading...</div>;
+  if (error) return <div className="flex items-center justify-center min-h-screen bg-red-50 text-red-600">{error}</div>;
 
   return (
-    <div className="rounded-lg bg-white p-4 sm:p-6 shadow-md">
-      <div className="mb-4 sm:mb-6 flex items-center justify-between">
-        <h2 className="text-lg sm:text-xl font-semibold">Scoreboard Peserta</h2>
-        <div className="flex items-center gap-3">
-          {/* Refresh button */}
-          <button 
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            aria-label="Refresh scoreboard"
-          >
-            <RefreshCw 
-              size={18} 
-              className={isRefreshing ? 'animate-spin' : ''} 
-            />
-          </button>
+    <div className="relative min-h-screen w-full overflow-x-hidden bg-gradient-to-t from-[#47618a] to-[#E3E1DA] bg-fixed">
+      
+      <div className="absolute top-8 left-1/2 -translate-x-1/2 w-full z-10 pointer-events-none flex items-start justify-center">
+        <img 
+          src="/svg/blocks/trophy.svg" 
+          alt="Scoreboard Trophy" 
+          className="w-[40%] h-auto max-w-xs lg:w-[15vw] lg:max-w-sm lg:animate-slide-down" 
+        />
+      </div>
+
+      <main className="relative z-10 p-4 sm:p-6 lg:p-8 pt-32 lg:pt-60 min-h-screen">
+        <div className="max-w-4xl mx-auto">
           
-          {/* Connection status indicator */}
-          <div className="flex items-center gap-2">
-            {isConnected ? (
-              <div className="flex items-center gap-2 text-green-600 text-sm">
-                <Wifi size={16} />
-                <span className="hidden sm:inline">Live</span>
+          <div className="mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-black/20 hover:bg-black/30 text-gray-100 hover:text-white transition-all duration-300 group"
+            >
+              <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          <div className="rounded-3xl bg-[#0c1015]/90 backdrop-blur-xl border border-[#363E53]/50 p-6 sm:p-8 shadow-2xl">
+            
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl lg:text-3xl font-bold text-[#DADBD3] flex items-center gap-3">
+                SCOREBOARD
+              </h2>
+              <div className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full backdrop-blur-md ${
+                isConnected 
+                  ? 'bg-green-900/30 text-green-300 border border-green-500/30' 
+                  : 'bg-gray-800/50 text-gray-400 border border-gray-600/30'
+              }`}>
+                {isConnected ? <Wifi size={16} /> : <WifiOff size={16} />}
+                <span>{isConnected ? 'Live' : 'Offline'}</span>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 text-gray-400 text-sm">
-                <WifiOff size={16} />
-                <span className="hidden sm:inline">Offline</span>
-              </div>
-            )}
+            </div>
+            
+            <div className="overflow-y-auto max-h-[60vh] lg:max-h-none lg:overflow-visible rounded-2xl bg-[#0a0b0f]/50 border border-[#363E53]/30">
+              <table className="min-w-full">
+                <thead className="bg-[#363E53]/20 sticky top-0 backdrop-blur-md">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-[#DADBD3]/80">Rank</th>
+                    <th className="px-3 sm:px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-[#DADBD3]/80">Name</th>
+                    <th className="px-3 sm:px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-[#DADBD3]/80">Score</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#363E53]/20">
+                  {participants.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-12 text-center text-[#DADBD3]/60">
+                        <Trophy className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                        No participants.
+                      </td>
+                    </tr>
+                  ) : (
+                    participants.map((p) => (
+                      <tr key={p.id} className={`transition-colors duration-200 ${
+                        p.position <= 3 ? 'bg-[#FFD700]/10 hover:bg-[#FFD700]/20' : 'hover:bg-[#363E53]/20'
+                      }`}>
+                        <td className="whitespace-nowrap px-3 sm:px-6 py-4">
+                          <span className={`inline-flex items-center justify-center rounded-full w-8 h-8 text-xs sm:text-sm font-bold ${
+                              p.position === 1 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                            : p.position === 2 ? 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                            : p.position === 3 ? 'bg-amber-600/20 text-amber-400 border border-amber-600/30'
+                            : 'bg-[#363E53]/30 text-[#DADBD3]/80 border border-[#363E53]/50'
+                          }`}>
+                            {p.position}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-3 sm:px-6 py-4 text-sm sm:text-base font-medium text-[#DADBD3]">{p.name}</td>
+                        <td className="whitespace-nowrap px-3 sm:px-6 py-4 text-sm sm:text-base font-bold text-[#FFD700]">{p.score.toLocaleString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
-      
-      {/* Scrollable table container */}
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
-                Peringkat
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
-                Nama Peserta
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
-                Score
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {participants.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-gray-500 sm:px-6">
-                  Belum ada data peserta
-                </td>
-              </tr>
-            ) : (
-              participants.map((participant) => (
-                <tr 
-                  key={participant.id} 
-                  className={`transition-colors duration-200 ${
-                    participant.position <= 3 ? 'bg-blue-50' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <td className="whitespace-nowrap px-4 py-4 sm:px-6">
-                    <span
-                      className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold transition-colors duration-200 ${
-                        participant.position === 1
-                          ? 'bg-yellow-400 text-yellow-900'
-                          : participant.position === 2
-                          ? 'bg-gray-300 text-gray-900'
-                          : participant.position === 3
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {participant.position}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 font-medium text-gray-900 sm:px-6">
-                    {participant.name}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-4 font-medium text-gray-900 sm:px-6">
-                    {participant.score.toLocaleString()}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Scroll indicator for mobile */}
-      {participants.length > 0 && (
-        <div className="mt-2 text-xs text-gray-500 text-center sm:hidden">
-          Geser ke samping untuk melihat lebih banyak
-        </div>
-      )}
+      </main>
     </div>
   );
 };
