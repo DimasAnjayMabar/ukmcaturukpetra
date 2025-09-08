@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { supabase } from '../../../db_client/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 interface AttendanceRecord {
   id: string;
@@ -17,7 +17,9 @@ const AttendanceList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const formatSupabaseTime = (timeString: string) => {
     if (timeString.includes(':')) {
@@ -201,15 +203,15 @@ const AttendanceList: React.FC = () => {
 
   const handleRefresh = async () => {
     try {
+      setIsRefreshing(true);
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session) {
-        setLoading(true);
         await fetchAttendanceData(sessionData.session.user.id);
       }
     } catch (err) {
       console.error('Error refreshing data:', err);
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -239,45 +241,62 @@ const AttendanceList: React.FC = () => {
   }
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow-md">
+    <div className="rounded-lg bg-white p-4 sm:p-6 shadow-md">
       {/* Header with realtime indicator */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Daftar Kehadiran</h2>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-semibold">Daftar Kehadiran</h2>
         <div className="flex items-center gap-3">
+          {/* Refresh button */}
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Refresh data"
+          >
+            <RefreshCw 
+              size={18} 
+              className={isRefreshing ? 'animate-spin' : ''} 
+            />
+          </button>
+          
           {/* Realtime status indicator */}
           <div className="flex items-center gap-2">
-              {isOnline ? (
-                <div className="flex items-center gap-2 text-green-600 text-sm">
-                  <Wifi size={16} />
-                  <span>Live</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-400 text-sm">
-                  <WifiOff size={16} />
-                  <span>Offline</span>
-                </div>
-              )}
-            </div>
+            {isOnline ? (
+              <div className="flex items-center gap-2 text-green-600 text-sm">
+                <Wifi size={16} />
+                <span className="hidden sm:inline">Live</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-gray-400 text-sm">
+                <WifiOff size={16} />
+                <span className="hidden sm:inline">Offline</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
-      <div className="overflow-hidden rounded-lg border border-gray-200">
+      {/* Scrollable table container */}
+      <div 
+        ref={tableContainerRef}
+        className="overflow-x-auto rounded-lg border border-gray-200"
+      >
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
                 Pertemuan
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
                 Tanggal
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
                 Waktu
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
                 Lokasi
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 whitespace-nowrap sm:px-6">
                 Status
               </th>
             </tr>
@@ -285,26 +304,26 @@ const AttendanceList: React.FC = () => {
           <tbody className="divide-y divide-gray-200 bg-white">
             {attendanceRecords.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500 sm:px-6">
                   Belum ada data kehadiran
                 </td>
               </tr>
             ) : (
               attendanceRecords.map((record) => (
                 <tr key={record.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900 sm:px-6">
                     {record.meetingTitle}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900 sm:px-6">
                     {record.date}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900 sm:px-6">
                     {record.time}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                  <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900 sm:px-6">
                     {record.location}
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                  <td className="whitespace-nowrap px-4 py-4 text-sm sm:px-6">
                     <span
                       className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold leading-5 ${getStatusColor(
                         record.status
@@ -319,6 +338,13 @@ const AttendanceList: React.FC = () => {
           </tbody>
         </table>
       </div>
+      
+      {/* Scroll indicator for mobile */}
+      {attendanceRecords.length > 0 && (
+        <div className="mt-2 text-xs text-gray-500 text-center sm:hidden">
+          Geser ke samping untuk melihat lebih banyak
+        </div>
+      )}
     </div>
   );
 };
