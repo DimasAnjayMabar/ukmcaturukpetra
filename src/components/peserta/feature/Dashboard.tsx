@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiMenu, FiX, FiCode, FiAward, FiList, FiLogOut, FiUser } from 'react-icons/fi';
+import { FiMenu, FiX, FiCode, FiAward, FiList, FiLogOut, FiUser, FiClock } from 'react-icons/fi';
 import { supabase } from '../../../db_client/client';
 import { ErrorModal } from '../../error_modal/ErrorModal';
 import Scoreboard from './Scoreboard';
@@ -118,7 +118,7 @@ const DashboardPeserta: React.FC<DashboardLayoutProps> = ({ user }) => {
 
     {
       name: 'Chess Clock',
-      icon: <FiList className="mr-3" size={20} />,
+      icon: <FiClock className="mr-3" size={20} />,
       component: <ChessClock />,
     },
 
