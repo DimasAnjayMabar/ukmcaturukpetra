@@ -135,7 +135,7 @@ export default function HomePage() {
     const element = document.getElementById(sectionId);
     if (element) {
       // Hitung tinggi navbar secara dinamis atau gunakan estimasi
-      const navbarHeight = 0; // Estimasi tinggi navbar termasuk padding
+      const navbarHeight = -10; // Estimasi tinggi navbar termasuk padding
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
 
