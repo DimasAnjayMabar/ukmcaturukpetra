@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
+import { Home, Target, Flag, Calendar } from 'lucide-react';
 import Navbar from './Navbar';
 import ChessPiecesGuide from './ChessPieceGuide';
 import Timeline from './Timeline';
@@ -17,6 +18,16 @@ export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSection, setCurrentSection] = useState('hero');
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Daftar section dalam urutan
+  const sections = [
+    { id: 'hero', label: 'Home', icon: Home },
+    { id: 'visi', label: 'Visi', icon: Target },
+    { id: 'misi', label: 'Misi', icon: Flag },
+    { id: 'timeline', label: 'Timeline', icon: Calendar }
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,10 +35,46 @@ export default function HomePage() {
       const windowHeight = window.innerHeight;
       const progress = Math.min(scrollTop / windowHeight, 1);
       setScrollProgress(progress);
+      
+      // Deteksi section yang sedang aktif
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      
+      scrollTimeoutRef.current = setTimeout(() => {
+        const scrollPosition = window.scrollY + window.innerHeight / 3;
+        
+        let activeSection = 'hero';
+        let minDistance = Infinity;
+        
+        for (const section of sections) {
+          const element = document.getElementById(section.id);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            const elementTop = rect.top + window.scrollY;
+            const elementBottom = elementTop + rect.height;
+            
+            // Hitung jarak dari tengah viewport ke element
+            const distance = Math.abs(scrollPosition - (elementTop + elementBottom) / 2);
+            
+            if (distance < minDistance) {
+              minDistance = distance;
+              activeSection = section.id;
+            }
+          }
+        }
+        
+        setCurrentSection(activeSection);
+      }, 100);
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -79,6 +126,30 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const scrollToSection = useCallback((sectionId: string) => {
+    if (sectionId === 'hero') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      // Hitung tinggi navbar secara dinamis atau gunakan estimasi
+      const navbarHeight = 0; // Estimasi tinggi navbar termasuk padding
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - navbarHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
+
+  const handleNavigateToSection = useCallback((sectionId: string) => {
+    scrollToSection(sectionId);
+  }, [scrollToSection]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -89,7 +160,11 @@ export default function HomePage() {
 
   return (
     <main className="relative">
-      <Navbar isLoggedIn={isLoggedIn} userProfile={userProfile} />
+      <Navbar 
+        isLoggedIn={isLoggedIn} 
+        userProfile={userProfile} 
+        onNavigateToSection={handleNavigateToSection}
+      />
     
       {isLoggedIn && userProfile ? (
         <section
@@ -148,16 +223,38 @@ export default function HomePage() {
         <div className="relative">
           <ChessPiecesGuide />
         </div>
-        <section id='visi'>
+        <section id='visi' className='scroll-mt-40'>
           <Vision />
         </section>
         <section id='misi'>
           <Mission />
         </section>
-        <section id="timeline" className="w-full bg-[#0c1015] py-20 sm:py-24">
+        <section id="timeline" className="">
             <Timeline />
         </section>
       </div>
+
+      {/* Floating Navigation Buttons */}
+      <div className="fixed right-6 bottom-6 z-40 flex flex-col space-y-3">
+          {sections.map((section) => {
+            const IconComponent = section.icon;
+            return (
+              <button
+                key={section.id}
+                onClick={() => scrollToSection(section.id)}
+                className={`p-3 rounded-full shadow-lg transition-all duration-300 transform hover:scale-110 flex items-center justify-center ${
+                  currentSection === section.id 
+                    ? 'bg-[#576281] text-white' 
+                    : 'bg-[#576281] hover:bg-[#8392ac] text-white'
+                }`}
+                aria-label={`Go to ${section.label}`}
+                title={section.label}
+              >
+                <IconComponent className="h-5 w-5" />
+              </button>
+            );
+          })}
+        </div>
     </main>
   );
 }
