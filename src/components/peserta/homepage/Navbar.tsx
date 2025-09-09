@@ -26,10 +26,33 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
   }, []);
 
   const scrollToSection = (sectionId: string) => {
+    if (sectionId === 'hero') {
+      // Cek jika #features-hero ada (saat user login)
+      if (document.getElementById('features-hero')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsMobileMenuOpen(false);
+        return;
+      }
+
+      // Cek jika #hero ada (saat user tidak login)
+      if (document.getElementById('hero')) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setIsMobileMenuOpen(false);
+        return;
+      }
+
+      // Fallback: scroll ke atas
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
+    // Untuk section lain (non-fixed), tetap pakai scrollIntoView
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+
     setIsMobileMenuOpen(false);
   };
 
@@ -41,19 +64,25 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
-        isScrolled ? '-translate-y-full' : 'translate-y-0'
+      className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
+        isScrolled 
+          ? 'bg-white/90 backdrop-blur-md shadow-md py-3' 
+          : 'bg-transparent py-4 md:py-6'
       } ${className}`}
     >
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2 group z-10">
             <img
               src="/svg/chess logo.svg"
               alt="UKM Chess Logo"
-              className="h-8 md:h-10 w-auto transition-transform duration-200 group-hover:scale-105"
+              className={`transition-all duration-200 group-hover:scale-105 ${
+                isScrolled ? 'h-8 md:h-9' : 'h-8 md:h-10'
+              }`}
             />
-            <span className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight">
+            <span className={`font-bold text-gray-900 tracking-tight transition-all duration-200 ${
+              isScrolled ? 'text-xl md:text-xl' : 'text-xl md:text-2xl'
+            }`}>
               UKM CHESS
             </span>
           </Link>
@@ -78,7 +107,7 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="font-medium text-gray-900">{userProfile.name}</p>
-                      <p className="text-sm text-gray-500">{userProfile.email}</p>
+                      <p className="text-sm text-gray-500"> NRP : {userProfile.nrp}</p>
                       <p className="text-xs text-gray-400">Score: {userProfile.total_score || 0}</p>
                     </div>
                     <button
@@ -113,7 +142,7 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
           </button>
         </div>
 
-        {isMobileMenuOpen && (
+        {isMobileMenuOpen && ( 
           <div className="md:hidden mt-4 bg-black/20 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl overflow-hidden">
             <div className="px-4 py-4 space-y-2">
               <button
@@ -133,6 +162,12 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
                 className="block w-full text-left px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200 font-medium"
               >
                 Misi
+              </button>
+              <button
+                onClick={() => scrollToSection('timeline')}
+                className="block w-full text-left px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200 font-medium"
+              >
+                Timeline
               </button>
               
               {isLoggedIn && userProfile && (

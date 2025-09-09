@@ -90,7 +90,7 @@ export default function HomePage() {
   return (
     <main className="relative">
       <Navbar isLoggedIn={isLoggedIn} userProfile={userProfile} />
-      
+    
       {isLoggedIn && userProfile ? (
         <section
           id="features-hero"
@@ -148,9 +148,12 @@ export default function HomePage() {
         <div className="relative">
           <ChessPiecesGuide />
         </div>
-        <Vision />
-        <Mission />
-        
+        <section id='visi'>
+          <Vision />
+        </section>
+        <section id='misi'>
+          <Mission />
+        </section>
         <section id="timeline" className="w-full bg-[#0c1015] py-20 sm:py-24">
             <Timeline />
         </section>

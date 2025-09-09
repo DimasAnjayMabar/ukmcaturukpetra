@@ -41,4 +41,17 @@ body {
   font-family: 'spekk', sans-serif;
 }
 
+#visi {
+  scroll-margin-top: 400px; /* atau tinggi navbar kamu */
+}
+
+#misi{
+  scroll-margin-top: 350px;
+}
+
+#timeline{
+  scroll-margin-top: 300px;
+}
+
+
 
