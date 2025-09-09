@@ -169,16 +169,7 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
               >
                 Timeline
               </button>
-              
-              {isLoggedIn && userProfile && (
-                <button
-                  onClick={() => scrollToSection('features')}
-                  className="block w-full text-left px-4 py-3 text-white hover:text-gray-200 hover:bg-white/10 rounded-lg transition-colors duration-200 font-medium"
-                >
-                  Features
-                </button>
-              )}
-
+            
               <div className="pt-3 border-t border-white/20 mt-3">
                 {isLoggedIn && userProfile ? (
                   <div className="space-y-2">
