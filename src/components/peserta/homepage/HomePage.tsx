@@ -94,7 +94,8 @@ export default function HomePage() {
           .eq('id', session.user.id)
           .single();
 
-        if (profileError || !profileData || profileData.role !== 'peserta') {
+        // PERBAIKAN: Izinkan admin dan peserta
+        if (profileError || !profileData || (profileData.role !== 'peserta' && profileData.role !== 'admin')) {
           setIsLoggedIn(false);
           setIsLoading(false);
           return;
@@ -167,9 +168,10 @@ export default function HomePage() {
       />
     
       {isLoggedIn && userProfile ? (
+        // PERBAIKAN: Tampilkan PesertaFeatures untuk admin dan peserta
         <section
           id="features-hero"
-          className=" fixed top-0 left-0 h-screen w-screen bg-white z-0 flex items-center justify-center"
+          className="fixed top-0 left-0 h-screen w-screen bg-white z-0 flex items-center justify-center ipad:items-start ipad:pt-16"
         >
           <PesertaFeatures userProfile={userProfile} />
         </section>

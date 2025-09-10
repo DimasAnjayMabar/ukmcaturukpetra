@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { supabase } from "../../../db_client/client";
+import { X } from "lucide-react";
 
 /**
  * Base32 decode (RFC 4648, no padding) -> Uint8Array
@@ -67,7 +68,13 @@ const generateTotp = async (
   return (bin % mod).toString().padStart(digits, "0");
 };
 
-const QrCodePeserta: React.FC = () => {
+interface QrCodePesertaProps {
+  isOpen: boolean;
+  onClose: () => void;
+  isMobile: boolean;
+}
+
+const QrCodePeserta: React.FC<QrCodePesertaProps> = ({ isOpen, onClose, isMobile }) => {
   const [loading, setLoading] = useState(true);
   const [secret, setSecret] = useState<string | null>(null);
   const [token, setToken] = useState<string>("");
@@ -77,8 +84,27 @@ const QrCodePeserta: React.FC = () => {
   const stepSec = 30;
   const digits = 6;
 
+  // Close modal on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden"; // Prevent background scrolling
+    }
+    
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "auto";
+    };
+  }, [isOpen, onClose]);
+
   // Fetch secret milik user yang login
   useEffect(() => {
+    if (!isOpen) return;
+    
     const fetchSecret = async () => {
       try {
         setLoading(true);
@@ -110,7 +136,7 @@ const QrCodePeserta: React.FC = () => {
     };
 
     fetchSecret();
-  }, []);
+  }, [isOpen]);
 
   // Hitung countdown detik sisa ke window berikutnya
   const calcRemaining = () => {
@@ -121,6 +147,8 @@ const QrCodePeserta: React.FC = () => {
 
   // Update token tiap detik (dan otomatis ganti tiap 30s)
   useEffect(() => {
+    if (!isOpen) return;
+    
     let timer: number | undefined;
 
     const tick = async () => {
@@ -143,54 +171,79 @@ const QrCodePeserta: React.FC = () => {
     return () => {
       if (timer) window.clearInterval(timer);
     };
-  }, [secret]);
+  }, [secret, isOpen]);
 
   const qrValue = useMemo(() => token, [token]);
 
-  if (loading) {
+ if (loading) {
     return (
-      <div className="w-full max-w-md mx-auto rounded-lg bg-white p-6 shadow">
-        <p className="text-center text-gray-600">Memuat...</p>
+      <div className="w-full flex flex-col items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
+        <p className="text-center text-gray-600 text-sm">Memuat QR Code...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full max-w-md mx-auto rounded-lg bg-white p-6 shadow">
-        <p className="text-center text-red-600">{error}</p>
+      <div className="w-full p-4">
+        <p className="text-center text-red-600 text-sm mb-4">{error}</p>
+        <button
+          onClick={onClose}
+          className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+        >
+          Tutup
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-md mx-auto rounded-lg bg-white p-6 shadow">
-      <h2 className="mb-2 text-xl font-semibold text-gray-900">
+    <div className="w-full">
+      <h2 className={`font-semibold text-gray-900 text-center mb-1 ${isMobile ? 'text-lg' : 'text-xl'}`}>
         QR Dinamis Kehadiran
       </h2>
-      <p className="mb-4 text-gray-600 text-sm">
+      <p className={`text-gray-600 text-center mb-4 ${isMobile ? 'text-xs' : 'text-sm'}`}>
         Tunjukkan QR ini ke panitia. Kode berubah tiap 30 detik.
       </p>
 
-      <div className="flex justify-center">
-        <div className="p-4 bg-white rounded-lg border border-gray-200">
-          <QRCode value={qrValue || "-"} size={240} level="H" />
+      <div className="flex justify-center mb-4">
+        <div className="p-2 bg-white rounded-lg border border-gray-200">
+          <QRCode 
+            value={qrValue || "-"} 
+            size={isMobile ? 160 : 220} 
+            level="H" 
+          />
         </div>
       </div>
 
-      <div className="mt-4 text-center">
-        <p className="text-2xl font-mono tracking-widest">{token || "------"}</p>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="text-center mb-4">
+        <p className={`font-mono tracking-widest ${isMobile ? 'text-xl' : 'text-2xl'} mb-2`}>
+          {token || "------"}
+        </p>
+        <div className="w-full bg-gray-200 rounded-full h-1.5 mx-auto max-w-xs">
+          <div 
+            className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000"
+            style={{ width: `${(remaining / stepSec) * 100}%` }}
+          ></div>
+        </div>
+        <p className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
           Refresh dalam {remaining}s
         </p>
       </div>
 
-      <div className="mt-6 rounded-lg bg-blue-50 p-3">
-        <p className="text-center text-sm text-blue-700">
-          Privasi aman: kode hanya valid singkat. Screenshot akan cepat
-          kedaluwarsa.
+      <div className="rounded-lg bg-blue-50 p-3 mb-4">
+        <p className={`text-center text-blue-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+          Privasi aman: kode hanya valid singkat. Screenshot akan cepat kedaluwarsa.
         </p>
       </div>
+
+      <button
+        onClick={onClose}
+        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+      >
+        Tutup
+      </button>
     </div>
   );
 };

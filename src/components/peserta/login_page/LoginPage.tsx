@@ -110,7 +110,7 @@ setErrorType('email_not_verified');
 setIsModalOpen(true);
 return;
 }
-if (userProfile.role !== 'peserta') {
+if (userProfile.role !== 'peserta' && userProfile.role !== 'admin') {
 setErrorType('other');
 setCustomMessage('Anda tidak memiliki akses peserta');
 setIsModalOpen(true);
