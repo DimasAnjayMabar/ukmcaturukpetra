@@ -5,7 +5,7 @@ import { supabase } from '../../../db_client/client';
 import { ErrorModal } from '../../error_modal/ErrorModal';
 import Scoreboard from './Scoreboard';
 import AttendanceList from './DaftarKehadiran';
-import QrCodePeserta from './QrCode';
+import QrCodePeserta from './QrCodePeserta';
 import { LogoutModal } from '../logout_modal/LogoutModal';
 import { UserProfile } from '../../../types';
 import ChessClock from './ChessClock';

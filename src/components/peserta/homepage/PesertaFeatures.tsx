@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { UserProfile } from "../../../types";
-import QrScannerModal from "../feature/QRScannerModal";
+import MyQRCodeModal from "../feature/MyQRCodeModal";
 
 interface PesertaFeaturesProps {
   userProfile: UserProfile;
@@ -45,8 +45,8 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
     },
     qr: {
       key: "qr",
-      title: "Scan to Join",
-      subtitle: "Join via QR",
+      title: "My QR",
+      subtitle: "Show to staff",
       svg: "/svg/blocks/sight.svg",
       isModal: true,
     },
@@ -320,7 +320,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
         </div>
       </section>
 
-      <QrScannerModal
+      <MyQRCodeModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
       />
