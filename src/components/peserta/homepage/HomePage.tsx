@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
-import { Home, Target, Flag, Calendar } from 'lucide-react';
+import { Home, Target, Flag, Calendar, Eye, Compass } from 'lucide-react';
 import Navbar from './Navbar';
 import ChessPiecesGuide from './ChessPieceGuide';
 import Timeline from './Timeline';
@@ -24,8 +24,8 @@ export default function HomePage() {
   // Daftar section dalam urutan
   const sections = [
     { id: 'hero', label: 'Home', icon: Home },
-    { id: 'visi', label: 'Visi', icon: Target },
-    { id: 'misi', label: 'Misi', icon: Flag },
+    { id: 'visi', label: 'Visi', icon: Eye },
+    { id: 'misi', label: 'Misi', icon: Compass },
     { id: 'timeline', label: 'Timeline', icon: Calendar }
   ];
 

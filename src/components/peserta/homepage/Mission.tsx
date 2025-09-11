@@ -44,9 +44,9 @@ export default function OurMission() {
     if (width < 768) {
       return 'sm';
     } else if (width < 1280) {
-      return 'md';
+      return 'sm';
     } else {
-      return 'lg';
+      return 'md';
     }
   }, []);
 
@@ -138,7 +138,7 @@ export default function OurMission() {
       className="relative h-screen bg-[#1D252D] text-white flex flex-col"
     >
       <div className="flex-1 relative w-full overflow-hidden">
-        <div className="absolute top-0 right-5 md:right-40 pt-12 md:pt-20 text-center z-10 pointer-events-none">
+        <div className="absolute md:bottom-200 right-5 md:left-10 pt-12 md:pt-20 text-center z-10 pointer-events-none">
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-[0.2em] text-white drop-shadow-md">
             OUR MISSION
           </h2>
@@ -196,7 +196,7 @@ export default function OurMission() {
           />
         </div>
 
-        <div className="absolute bottom-8 md:bottom-6 left-0 w-full p-4 md:p-16">
+        <div className="absolute md:bottom-0 left-0 w-full p-4 md:p-16 bottom-0">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 text-left">
             {missions.map((mission, index) => (
               <div
