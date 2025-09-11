@@ -133,16 +133,25 @@ const Timeline: React.FC = () => {
                         <div className="flex justify-center mb-6 lg:mb-8 w-full px-4">
                             <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
                                 {timelineData.map((_, index) => (
-                                    <button
-                                        key={`dot-${index}`}
-                                        onClick={() => handleDotClick(index)}
-                                        className={`w-4 h-4 md:w-5 md:h-5 rounded-full transition-all duration-300 ${
-                                            currentStep === index 
-                                                ? 'bg-yellow-400 scale-125 shadow-lg shadow-yellow-500/50' 
-                                                : 'bg-gray-600 hover:bg-gray-500'
-                                        }`}
-                                        aria-label={`Go to Week ${index + 1}`}
-                                    />
+                                    <div key={`dot-container-${index}`} className="flex flex-col items-center">
+                                        <button
+                                            onClick={() => handleDotClick(index)}
+                                            className={`relative w-6 h-6 md:w-7 md:h-7 rounded-full transition-all duration-300 flex items-center justify-center ${
+                                                currentStep === index 
+                                                    ? 'bg-yellow-400 scale-125 shadow-lg shadow-yellow-500/50' 
+                                                    : 'bg-gray-600 hover:bg-gray-500'
+                                            }`}
+                                            aria-label={`Go to Week ${index + 1}`}
+                                        >
+                                            {/* Menampilkan nomor urut pada semua dot */}
+                                            <span className={`text-xs font-bold ${
+                                                currentStep === index ? 'text-gray-900' : 'text-gray-300'
+                                            }`}>
+                                                {index + 1}
+                                            </span>
+                                        </button>
+                                        {/* Label Week untuk setiap dot */}
+                                    </div>
                                 ))}
                             </div>
                         </div>

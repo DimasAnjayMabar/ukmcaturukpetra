@@ -206,7 +206,7 @@ export default function HomePage() {
             }}
           >
             <span className="tracking-tighter text-[clamp(2.5rem,12vw,10rem)] text-black">
-              UKM CHESS
+              UKM CATUR
             </span>
           </div>
           <div className="w-full h-full z-20 [grid-area:1/1]">

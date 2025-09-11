@@ -170,7 +170,7 @@ alt="UKM Chess Logo"
 className="h-8 md:h-10 w-auto transition-transform duration-200 group-hover:scale-105"
 />
 <span className="text-center text-3xl font-bold tracking-wider text-[#0f1028] uppercase">
-UKM CHESS
+UKM CATUR
 </span>
 </Link>
 

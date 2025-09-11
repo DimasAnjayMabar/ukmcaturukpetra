@@ -70,7 +70,7 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
             <span className={`font-bold text-gray-900 tracking-tight transition-all duration-200 ${
               isScrolled ? 'text-xl md:text-xl' : 'text-xl md:text-2xl'
             }`}>
-              UKM CHESS
+              UKM CATUR
             </span>
           </Link>
 
