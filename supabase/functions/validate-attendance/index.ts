@@ -1,7 +1,7 @@
 // supabase/functions/validate-attendance/index.ts
 // Deno Edge Function
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 type Body = { token: string; pertemuanId: string };
 type Resp =
