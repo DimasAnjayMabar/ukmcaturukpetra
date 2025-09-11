@@ -78,8 +78,8 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(
-      Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!,
-      Deno.env.get("VITE_PUBLIC_SUPABASE_KEY")! // service role for write
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")! // service role for write
     );
 
     // Fetch small set (80 users is fine)
