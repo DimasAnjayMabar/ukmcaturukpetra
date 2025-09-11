@@ -1,7 +1,7 @@
 // supabase/functions/validate-attendance/index.ts
 // Deno Edge Function
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 type Body = { token: string; pertemuanId: string };
 type Resp =
@@ -78,8 +78,8 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")! // service role for write
+      Deno.env.get("VITE_PUBLIC_SUPABASE_URL")!,
+      Deno.env.get("VITE_PUBLIC_SUPABASE_KEY")! // service role for write
     );
 
     // Fetch small set (80 users is fine)
