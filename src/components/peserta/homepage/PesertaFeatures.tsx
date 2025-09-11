@@ -92,7 +92,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
           .floating-title .ft-title {
             font-weight: 800;
             letter-spacing: 0.2px;
-            color: #2f56e5; /* slightly stronger than #4776E6 */
+            color: #2f56e5;
             font-size: 14px;
             line-height: 1.05;
           }
@@ -128,6 +128,43 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
           .group:hover .floating-title {
             transform: translateX(-50%) translateY(-6px);
           }
+
+          /* Media query khusus untuk desktop 1366x768 */
+          @media (min-width: 1366px) and (max-height: 800px) {
+            /* Block positions untuk desktop 1366x768 - menggunakan nilai lg */
+            .block-desktop-1366 {
+              bottom: 20% !important;
+            }
+            .block-desktop-1366-2 {
+              bottom: 10% !important;
+            }
+            .block-desktop-1366-3 {
+              bottom: 0% !important;
+            }
+            .block-desktop-1366-4 {
+              bottom: -20% !important;
+            }
+            .block-desktop-1366-5 {
+              bottom: -30% !important;
+            }
+            .block-desktop-1366-6 {
+              bottom: -35% !important;
+            }
+            .block-desktop-1366-7 {
+              bottom: -45% !important;
+            }
+            
+            /* Feature positions untuk desktop 1366x768 - menggunakan nilai lg */
+            .feature-desktop-1366-1 {
+              bottom: 40% !important;
+            }
+            .feature-desktop-1366-2 {
+              bottom: 20% !important;
+            }
+            .feature-desktop-1366-3 {
+              bottom: 0% !important;
+            }
+          }
         `}
       </style>
 
@@ -142,88 +179,88 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-20 bottom-[40%] lg:bottom-[-30%] left-[26%]"
+                className="absolute w-[24%] z-20 bottom-[40%] lg:bottom-[20%] xl:bottom-[5%] 2xl:bottom-[-5%] block-desktop-1366 left-[26%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-20 bottom-[40%] lg:bottom-[-30%] left-[50%]"
+                className="absolute w-[24%] z-20 bottom-[40%] lg:bottom-[20%] xl:bottom-[5%] 2xl:bottom-[-5%] block-desktop-1366 left-[50%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-20 bottom-[30%] lg:bottom-[-50%] left-[38%]"
+                className="absolute w-[24%] z-20 bottom-[30%] lg:bottom-[10%] xl:bottom-[-5%] 2xl:bottom-[-15%] block-desktop-1366-2 left-[38%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-40 bottom-[20%] lg:bottom-[-70%] left-[26%]"
+                className="absolute w-[24%] z-40 bottom-[20%] lg:bottom-[0%] xl:bottom-[-15%] 2xl:bottom-[-25%] block-desktop-1366-3 left-[26%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-40 bottom-[20%] lg:bottom-[-70%] left-[50%]"
+                className="absolute w-[24%] z-40 bottom-[20%] lg:bottom-[0%] xl:bottom-[-15%] 2xl:bottom-[-25%] block-desktop-1366-3 left-[50%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[0%] lg:bottom-[-90%] left-[14%]"
+                className="absolute w-[24%] z-50 bottom-[0%] lg:bottom-[-20%] xl:bottom-[-35%] 2xl:bottom-[-45%] block-desktop-1366-4 left-[14%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[0%] lg:bottom-[-90%] left-[62%]"
+                className="absolute w-[24%] z-50 bottom-[0%] lg:bottom-[-20%] xl:bottom-[-35%] 2xl:bottom-[-45%] block-desktop-1366-4 left-[62%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-10%] lg:bottom-[-110%] left-[26%]"
+                className="absolute w-[24%] z-50 bottom-[-10%] lg:bottom-[-30%] xl:bottom-[-45%] 2xl:bottom-[-55%] block-desktop-1366-5 left-[26%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-10%] lg:bottom-[-110%] left-[50%]"
+                className="absolute w-[24%] z-50 bottom-[-10%] lg:bottom-[-30%] xl:bottom-[-45%] 2xl:bottom-[-55%] block-desktop-1366-5 left-[50%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-40 bottom-[15%] lg:bottom-[-70%] left-[2%]"
+                className="absolute w-[24%] z-40 bottom-[15%] lg:bottom-[-5%] xl:bottom-[-20%] 2xl:bottom-[-30%] block-desktop-1366-2 left-[2%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-40 bottom-[15%] lg:bottom-[-70%] left-[74%]"
+                className="absolute w-[24%] z-40 bottom-[15%] lg:bottom-[-5%] xl:bottom-[-20%] 2xl:bottom-[-30%] block-desktop-1366-2 left-[74%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-15%] lg:bottom-[-110%] left-[2%]"
+                className="absolute w-[24%] z-50 bottom-[-15%] lg:bottom-[-35%] xl:bottom-[-50%] 2xl:bottom-[-60%] block-desktop-1366-6 left-[2%]"
               />
               <img
                 src="/svg/blocks/block b m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-15%] lg:bottom-[-110%] left-[74%]"
+                className="absolute w-[24%] z-50 bottom-[-15%] lg:bottom-[-35%] xl:bottom-[-50%] 2xl:bottom-[-60%] block-desktop-1366-6 left-[74%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-130%] left={[38]}"
+                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-45%] xl:bottom-[-60%] 2xl:bottom-[-70%] block-desktop-1366-7 left-[38%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-130%] left-[14%]"
+                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-45%] xl:bottom-[-60%] 2xl:bottom-[-70%] block-desktop-1366-7 left-[14%]"
               />
               <img
                 src="/svg/blocks/block w m.svg"
                 alt="Decoration"
-                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-130%] left-[62%]"
+                className="absolute w-[24%] z-50 bottom-[-25%] lg:bottom-[-45%] xl:bottom-[-60%] 2xl:bottom-[-70%] block-desktop-1366-7 left-[62%]"
               />
 
               {/* Scoreboard */}
               <Link
                 to={(featureData.scoreboard as any).path}
-                className="group absolute w-[25%] z-10 cursor-pointer bottom-[50%] lg:bottom-[-10%] left-[37.5%]"
+                className="group absolute w-[25%] z-10 cursor-pointer bottom-[50%] lg:bottom-[40%] xl:bottom-[30%] feature-desktop-1366-1 left-[37.5%]"
                 aria-label={featureData.scoreboard.title}
               >
                 <div className="relative">
@@ -248,7 +285,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
               {/* Chess Clock */}
               <Link
                 to={(featureData.clock as any).path}
-                className="group absolute w-[24%] z-30 cursor-pointer bottom-[30%] lg:bottom-[-50.25%] left-[14%]"
+                className="group absolute w-[24%] z-30 cursor-pointer bottom-[30%] lg:bottom-[20%] xl:bottom-[10%] feature-desktop-1366-2 left-[14%]"
                 aria-label={featureData.clock.title}
               >
                 <div className="relative">
@@ -271,7 +308,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
               {/* Attendance */}
               <Link
                 to={(featureData.attendance as any).path}
-                className="group absolute w-[24%] z-30 cursor-pointer bottom-[30%] lg:bottom-[-50.5%] left-[62%]"
+                className="group absolute w-[24%] z-30 cursor-pointer bottom-[30%] lg:bottom-[20%] xl:bottom-[10%] feature-desktop-1366-2 left-[62%]"
                 aria-label={featureData.attendance.title}
               >
                 <div className="relative">
@@ -296,7 +333,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
               {/* QR Scanner */}
               <button
                 onClick={() => setIsQrModalOpen(true)}
-                className="group absolute w-[24%] z-40 cursor-pointer bottom-[10%] lg:bottom-[-90.5%] left-[38%]"
+                className="group absolute w-[24%] z-40 cursor-pointer bottom-[10%] lg:bottom-[0%] xl:bottom-[-10%] feature-desktop-1366-3 left-[38%]"
                 aria-label={featureData.qr.title}
               >
                 <div className="relative">
