@@ -1,7 +1,7 @@
 // supabase/functions/validate-attendance/index.ts
 // Deno Edge Function
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from '@supabase/supabase-js';
 
 type Body = { token: string; pertemuanId: string };
 type Resp =
@@ -71,10 +71,10 @@ Deno.serve(async (req) => {
 
     const { token, pertemuanId } = (await req.json()) as Body;
     if (!token || !pertemuanId) {
-      return Response.json<Resp>(
-        { success: false, message: "Bad payload" },
-        { status: 400 }
-      );
+      return Response.json({
+        success: false,
+        message: "Bad Payload",
+      });
     }
 
     const supabase = createClient(
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     if (!matched) {
-      return Response.json<Resp>({
+      return Response.json({
         success: false,
         message: "Token tidak valid / kedaluwarsa",
       });
@@ -152,15 +152,16 @@ Deno.serve(async (req) => {
       status = "inserted";
     }
 
-    return Response.json<Resp>({
+    return Response.json({
       success: true,
       status,
-      user: matched,
+      user : matched
     });
   } catch (e) {
-    return Response.json<Resp>(
-      { success: false, message: e instanceof Error ? e.message : "Error" },
-      { status: 500 }
-    );
+    return Response.json({
+      success: false,
+      message: e instanceof Error ? e.message : "Error",
+      status: 500
+    });
   }
 });
