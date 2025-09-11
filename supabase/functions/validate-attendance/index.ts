@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     const ctr = Math.floor(now / step);
 
     // Accept small drift: -1, 0, +1
-    const windows = [ctr - 1, ctr, ctr + 1];
+    const windows = [ctr - 2, ctr - 1, ctr, ctr + 1, ctr + 2];
 
     let matched:
       | { id: string; name: string; nrp?: string }
