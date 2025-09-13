@@ -26,7 +26,6 @@ export default function OurMission() {
   const [activeMissionIndex, setActiveMissionIndex] = useState(0);
   const [pawnHeightVh, setPawnHeightVh] = useState(0);
   const [screenSize, setScreenSize] = useState<'sm' | 'md' | 'lg'>('lg');
-  const missionRefs = useRef<(HTMLDivElement | null)[]>([]);
   const pawnRef = useRef<HTMLImageElement | null>(null);
   const handRef = useRef<HTMLImageElement | null>(null);
 
@@ -58,22 +57,6 @@ export default function OurMission() {
     measurePawn();
     window.addEventListener('resize', measurePawn);
     return () => window.removeEventListener('resize', measurePawn);
-  }, []);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-index'));
-            setActiveMissionIndex(index);
-          }
-        });
-      },
-      { root: null, rootMargin: '0px', threshold: 0.5 }
-    );
-    missionRefs.current.forEach((ref) => ref && observer.observe(ref));
-    return () => missionRefs.current.forEach((ref) => ref && observer.unobserve(ref));
   }, []);
 
   const getPositions = () => {
@@ -128,9 +111,9 @@ export default function OurMission() {
   return (
     <section 
       id="our-mission" 
-      className="relative h-[450vh] bg-[#1D252D] text-white scroll-smooth"
+      className="relative h-screen bg-[#1D252D] text-white flex items-center justify-center"
     >
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
+      <div className="relative h-screen w-full overflow-hidden">
         <div className="absolute top-0 right-5 md:right-40 pt-12 md:pt-20 text-center z-10 pointer-events-none">
           <h2 className="text-5xl md:text-6xl font-extrabold tracking-[0.2em] text-slate-800/80">
             OUR MISSION
@@ -185,12 +168,13 @@ export default function OurMission() {
           />
         </div>
 
-        <div className="absolute bottom-12 md:bottom-6 left-0 w-full p-8 md:p-16">
+        <div className="absolute bottom-12 md:bottom-6 left-0 w-full p-8 md:p-16 z-20">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 text-left">
             {missions.map((mission, index) => (
               <div
                 key={mission.id}
-                className="flex items-start gap-4 transition-all duration-700 ease-in-out"
+                onClick={() => setActiveMissionIndex(index)}
+                className="flex items-start gap-4 transition-all duration-700 ease-in-out cursor-pointer"
                 style={{ 
                   opacity: activeMissionIndex === index ? 1 : 0.2,
                   transform: activeMissionIndex === index ? 'translateY(0)' : 'translateY(10px)'
@@ -202,25 +186,6 @@ export default function OurMission() {
             ))}
           </div>
         </div>
-      </div>
-      
-      <div className="absolute top-0 left-0 w-full">
-        <div
-          ref={(el) => (missionRefs.current[0] = el)}
-          data-index={0}
-          className="h-[120vh]"
-          style={{ marginTop: '50vh' }}
-        />
-        <div
-          ref={(el) => (missionRefs.current[1] = el)}
-          data-index={1}
-          className="h-[100vh]"
-        />
-        <div
-          ref={(el) => (missionRefs.current[2] = el)}
-          data-index={2}
-          className="h-[180vh]"
-        />
       </div>
     </section>
   );

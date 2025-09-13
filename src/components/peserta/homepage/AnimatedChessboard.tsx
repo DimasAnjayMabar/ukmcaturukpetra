@@ -132,8 +132,8 @@ export const AnimatedChessboard: React.FC<AnimatedChessboardProps> = ({ currentM
       <div className="w-full shadow-xl rounded-lg overflow-hidden bg-gradient-to-tr from-[#11121A] via-[#2B3044] to-[#B1C2D8] p-3">
         <svg viewBox={`0 0 ${boardSize} ${boardSize}`} className="w-full h-auto aspect-square">
           <defs>
-            <image id="light-tile" href="/svg/icons/white tile.svg" width={tileSize} height={tileSize} />
-            <image id="dark-tile" href="/svg/icons/black tile.svg" width={tileSize} height={tileSize} />
+            <image id="light-tile" href="/webp/light-tile.webp" width={tileSize} height={tileSize} />
+            <image id="dark-tile" href="/webp/dark-tile.webp" width={tileSize} height={tileSize} />
           </defs>
           
           <g id="tiles">
