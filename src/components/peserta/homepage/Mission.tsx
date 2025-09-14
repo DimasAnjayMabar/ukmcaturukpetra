@@ -111,11 +111,11 @@ export default function OurMission() {
   return (
     <section 
       id="our-mission" 
-      className="relative h-screen bg-[#1D252D] text-white flex items-center justify-center"
+      className="relative min-h-screen bg-[#1D252D] text-white flex items-center justify-center"
     >
-      <div className="relative h-screen w-full overflow-hidden">
-        <div className="absolute top-0 right-5 md:right-40 pt-12 md:pt-20 text-center z-10 pointer-events-none">
-          <h2 className="text-5xl md:text-6xl font-extrabold tracking-[0.2em] text-slate-800/80">
+      <div className="relative min-h-screen w-full overflow-hidden">
+        <div className="absolute top-0 right-0 md:right-40 pt-12 md:pt-20 text-center z-10 pointer-events-none">
+          <h2 className="text-5xl md:text-6xl font-extrabold tracking-[0.2em] text-slate-800/80 px-12 md:px-0">
             OUR MISSION
           </h2>
         </div>
@@ -168,7 +168,7 @@ export default function OurMission() {
           />
         </div>
 
-        <div className="absolute bottom-12 md:bottom-6 left-0 w-full p-8 md:p-16 z-20">
+        <div className="absolute bottom-0 md:bottom-6 left-0 w-full p-8 md:p-16 z-20">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 text-left">
             {missions.map((mission, index) => (
               <div
