@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { AnimatedChessboard } from './AnimatedChessboard';
 
 const specificDates = [
@@ -30,179 +30,174 @@ const timelineData = timelineContent.map((item, index) => ({
     date: specificDates[index]
 }));
 
+// nav arrow helpers
+const ArrowButton: React.FC<{ direction: 'left' | 'right'; onClick: () => void; disabled: boolean; }> = ({ direction, onClick, disabled }) => (
+    <motion.button
+        onClick={onClick}
+        disabled={disabled}
+        className="w-10 xl:w-12 h-10 xl:h-12 rounded-full backdrop-blur-sm flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity duration-300"
+        whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label={direction === 'left' ? 'Previous week' : 'Next week'}
+    >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 xl:h-6 w-4 xl:w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={direction === 'left' ? "M15 19l-7-7 7-7" : "M9 5l7 7-7 7"} />
+        </svg>
+    </motion.button>
+);
+
 const Timeline: React.FC = () => {
-    const [currentStep, setCurrentStep] = useState(0);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
-    const swipeContainerRef = useRef<HTMLDivElement>(null);
-    const [swipeStartX, setSwipeStartX] = useState(0);
+    const totalSteps = timelineData.length;
+    const [currentStep, setCurrentStep] = useState(1);
 
-    // Detect mobile device
-    useEffect(() => {
-        const checkIsMobile = () => {
-            setIsMobile(window.innerWidth < 1024);
-        };
-        
-        checkIsMobile();
-        window.addEventListener('resize', checkIsMobile);
-        return () => window.removeEventListener('resize', checkIsMobile);
-    }, []);
-
-    // Swipe animation for mobile (simplified)
-    const handleSwipeStart = (e: React.TouchEvent) => {
-        if (!isMobile) return;
-        setSwipeStartX(e.touches[0].clientX);
-    };
-
-    const handleSwipeEnd = (e: React.TouchEvent) => {
-        if (!isMobile) return;
-        
-        const endX = e.changedTouches[0].clientX;
-        const diff = endX - swipeStartX;
-        const threshold = 50;
-        
-        if (diff > threshold) {
-            // Swipe right - go to previous
-            handlePrev();
-        } else if (diff < -threshold) {
-            // Swipe left - go to next
-            handleNext();
-        }
-    };
-
-    // Navigation functions
-    const handleNext = () => {
-        if (isTransitioning) return;
-        setIsTransitioning(true);
-        setCurrentStep(prev => (prev + 1) % timelineData.length);
-        setTimeout(() => setIsTransitioning(false), 600);
-    };
-
-    const handlePrev = () => {
-        if (isTransitioning) return;
-        setIsTransitioning(true);
-        setCurrentStep(prev => (prev - 1 + timelineData.length) % timelineData.length);
-        setTimeout(() => setIsTransitioning(false), 600);
-    };
-
-    const handleDotClick = (index: number) => {
-        if (isTransitioning || index === currentStep) return;
-        setIsTransitioning(true);
-        setCurrentStep(index);
-        setTimeout(() => setIsTransitioning(false), 600);
-    };
+    const handleNext = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    const handlePrevious = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+    const handleStepClick = (index: number) => setCurrentStep(index + 1);
 
     return (
-        <div 
-            ref={swipeContainerRef}
-            className="relative w-full bg-[#0c1015] flex flex-col py-8 md:py-12 min-h-screen"
-            onTouchStart={isMobile ? handleSwipeStart : undefined}
-            onTouchEnd={isMobile ? handleSwipeEnd : undefined}
-        >
-            <div className="relative w-full overflow-hidden flex-1">
-                <div className="text-center">
-                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#DADBD3]">
+        <div className="relative w-full bg-[#0c1015] min-h-screen flex flex-col justify-center py-12 sm:py-16">
+                
+                {/* desktop navigation */}
+                <div className="absolute hidden lg:flex right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 flex-col items-end gap-4">
+                    {timelineData.map((item, index) => (
+                        <div key={`nav-desktop-${index}`} className="relative group flex items-center">
+                            <div className="absolute right-full mr-1 px-3 py-1 text-[#FFF8DE] text-xs font-bold rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none whitespace-nowrap transform translate-x-2 group-hover:translate-x-0">
+                                {item.date}
+                            </div>
+                            <button
+                                onClick={() => handleStepClick(index)}
+                                className="flex items-center gap-4 text-right"
+                                aria-label={`Go to ${item.week}`}
+                            >
+                                <div className={`w-3 h-3 rounded-full transition-all duration-300 ease-in-out ${
+                                    currentStep === index + 1
+                                        ? 'bg-yellow-400 scale-150 shadow-lg shadow-yellow-500/50'
+                                        : 'bg-[#363E53] group-hover:bg-[#DADBD3]'
+                                }`} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                {/* header */}
+                <div className="absolute top-0 left-0 right-0 pt-8 sm:pt-12 md:pt-20 text-center z-10 pointer-events-none">
+                    <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#DADBD3]">
                         TIMELINE
                     </h2>
                 </div>
-
-                {/* Swipe instruction for mobile - only show if no buttons */}
-                {isMobile && (
-                    <div className="text-center text-xs text-gray-400 mt-4">
-                        Swipe left or right to navigate between weeks
-                    </div>
-                )}
                 
-                <div className="mx-auto flex w-full max-w-6xl flex-col lg:flex-row items-center justify-center">
-                    {/* 1. Animated Chessboard - Left for desktop, top for mobile */}
-                    <div className="flex items-center justify-center p-4 w-full lg:w-1/2 mb-6 lg:mb-0">
-                        <motion.div 
-                            className="transform scale-75 md:scale-90 lg:scale-100" 
-                            style={{ transform: 'rotate(-2deg)', filter: 'drop-shadow(8px 12px 24px rgba(0, 0, 0, 0.4))' }}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5 }}
-                        >
+                {/* desktop layout */}
+                <div className="relative mx-auto hidden lg:flex h-full w-full max-w-5xl flex-row items-center justify-center pt-12">
+                    
+                    {/* desktop prev arrow */}
+                    <div className="absolute left-0 z-20">
+                        <ArrowButton direction="left" onClick={handlePrevious} disabled={currentStep === 1} />
+                    </div>
+
+                    {/* desktop chessboard */}
+                    <div className="flex flex-1 items-center justify-center p-4 w-1/2">
+                        <motion.div className="transform" style={{ transform: 'rotate(-2deg)', filter: 'drop-shadow(8px 12px 24px rgba(0, 0, 0, 0.4))' }}>
                             <AnimatedChessboard currentMoveIndex={currentStep} />
                         </motion.div>
                     </div>
 
-                    {/* 2. Content Area - Right for desktop, below for mobile */}
-                    <div className="flex flex-col justify-center w-full lg:w-1/2">
-                        {/* Navigation Dots */}
-                        <div className="flex justify-center mb-6 lg:mb-8 w-full px-4">
-                            <div className="flex flex-wrap gap-3 md:gap-4 justify-center">
-                                {timelineData.map((_, index) => (
-                                    <div key={`dot-container-${index}`} className="flex flex-col items-center">
-                                        <button
-                                            onClick={() => handleDotClick(index)}
-                                            className={`relative w-6 h-6 md:w-7 md:h-7 rounded-full transition-all duration-300 flex items-center justify-center ${
-                                                currentStep === index 
-                                                    ? 'bg-yellow-400 scale-125 shadow-lg shadow-yellow-500/50' 
-                                                    : 'bg-gray-600 hover:bg-gray-500'
-                                            }`}
-                                            aria-label={`Go to Week ${index + 1}`}
-                                        >
-                                            {/* Menampilkan nomor urut pada semua dot */}
-                                            <span className={`text-xs font-bold ${
-                                                currentStep === index ? 'text-gray-900' : 'text-gray-300'
-                                            }`}>
-                                                {index + 1}
-                                            </span>
-                                        </button>
-                                        {/* Label Week untuk setiap dot */}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Text Content */}
-                        <div className="relative flex items-center justify-center text-center lg:text-left w-full mb-4 lg:mb-6 px-4">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={currentStep}
-                                    className="w-full max-w-2xl"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -20 }}
-                                    transition={{ duration: 0.5 }}
-                                >
-                                    <h3 className="text-xl md:text-2xl font-medium text-[#DADBD3] mb-3 md:mb-4">
-                                        {timelineData[currentStep].week}
-                                    </h3>
-                                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#DADBD3] mb-4 md:mb-5 lg:mb-6 leading-tight">
-                                        {timelineData[currentStep].title}
+                    {/* desktop content */}
+                    <div className="flex flex-1 flex-col justify-center w-1/2">
+                        <div className="relative flex items-center justify-center text-left">
+                            {timelineData.map((item, index) => (
+                                <motion.div key={item.week} className="absolute w-full max-w-lg px-12" initial={{ opacity: 0, y: 40, scale: 0.9 }} animate={{ opacity: currentStep === index + 1 ? 1 : 0, y: currentStep === index + 1 ? 0 : (currentStep > index + 1 ? -40 : 40), scale: currentStep === index + 1 ? 1 : 0.9, pointerEvents: currentStep === index + 1 ? 'auto' : 'none' }} transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1], type: 'spring', stiffness: 200, damping: 25 }}>
+                                    <h3 className="text-xl md:text-2xl font-medium text-[#DADBD3] mb-2">{item.week}</h3>
+                                    <h2 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-[#DADBD3] mb-6 leading-tight">
+                                        {item.title}
                                     </h2>
-                                    <p className="text-base md:text-lg font-medium text-yellow-400">
-                                        {timelineData[currentStep].date}
+                                    <p className="text-base md:text-lg font-medium" style={{ color: '#FFD700' }}>
+                                        {item.date}
                                     </p>
                                 </motion.div>
-                            </AnimatePresence>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* desktop next arrow */}
+                    <div className="absolute right-0 z-20">
+                        <ArrowButton direction="right" onClick={handleNext} disabled={currentStep === totalSteps} />
+                    </div>
+                </div>
+
+                {/* mobile layout */}
+                <div className="lg:hidden flex flex-col h-full justify-center">
+                    {/* mobile chessboard section */}
+                    <div className="flex-shrink pt-10 sm:pt-20 pb-4 sm:pb-6 px-4 flex items-center justify-center">
+                        <motion.div className="transform" style={{ transform: '', filter: 'drop-shadow(8px 12px 24px rgba(0, 0, 0, 0.4))' }}>
+                            <div className="w-full sm:w-64 md:w-full">
+                                <AnimatedChessboard currentMoveIndex={currentStep} />
+                            </div>
+                        </motion.div>
+                    </div>
+
+                    {/* mobile navigation circles */}
+                    <div className="flex-shrink px-4 pb-4 md:pb-8 xl:pb-0">
+                        <div className="max-w-xs mx-auto">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-7 gap-3 sm:gap-4 px-2 sm:px-4">
+                                    {timelineData.slice(0, 7).map((item, index) => (
+                                        <button key={`nav-mobile-top-${index}`} onClick={() => handleStepClick(index)} className="flex items-center justify-center z-10" aria-label={`Go to ${item.week}`}>
+                                            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center ${currentStep === index + 1 ? 'bg-yellow-400 scale-125 shadow-lg shadow-yellow-500/50' : 'bg-gray-600'}`}>
+                                                <span className={`font-bold text-xs transition-all duration-300 ${currentStep === index + 1 ? 'text-black' : 'text-white'}`}>{index + 1}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-7 gap-3 sm:gap-4 px-2 sm:px-4">
+                                    {timelineData.slice(7, 14).map((item, index) => (
+                                        <button key={`nav-mobile-bottom-${index}`} onClick={() => handleStepClick(index + 7)} className="flex items-center justify-center z-20" aria-label={`Go to ${item.week}`}>
+                                            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-all duration-300 ease-in-out flex items-center justify-center ${currentStep === index + 8 ? 'bg-yellow-400 scale-125 shadow-lg shadow-yellow-500/50' : 'bg-gray-600'}`}>
+                                                <span className={`font-bold text-xs transition-all duration-300 ${currentStep === index + 8 ? 'text-black' : 'text-white'}`}>{index + 8}</span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* mobile content section */}
+                    <div className="flex-shrink px-4 py-6 sm:py-0">
+                        <div className="relative flex items-center justify-center text-center min-h-[120px] sm:min-h-[140px]">
+                            {/* mobile nav arrows */}
+                            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-between px-4 sm:px-20 z-20">
+                                <ArrowButton direction="left" onClick={handlePrevious} disabled={currentStep === 1} />
+                                <ArrowButton direction="right" onClick={handleNext} disabled={currentStep === totalSteps} />
+                            </div>
+
+                            {/* mobile content */}
+                            {timelineData.map((item, index) => (
+                                <motion.div 
+                                    key={item.week} 
+                                    className="absolute w-full max-w-lg px-16 sm:px-8" 
+                                    initial={{ opacity: 0, y: 40, scale: 0.9 }} 
+                                    animate={{ 
+                                        opacity: currentStep === index + 1 ? 1 : 0, 
+                                        y: currentStep === index + 1 ? 0 : (currentStep > index + 1 ? -40 : 40), 
+                                        scale: currentStep === index + 1 ? 1 : 0.9, 
+                                        pointerEvents: currentStep === index + 1 ? 'auto' : 'none' 
+                                    }} 
+                                    transition={{ duration: 0.6, ease: [0.25, 0.1, 0.25, 1], type: 'spring', stiffness: 200, damping: 25 }}
+                                >
+                                    <h3 className="text-lg sm:text-xl font-medium text-[#DADBD3] mb-2">{item.week}</h3>
+                                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#DADBD3] mb-3 sm:mb-4 leading-tight">
+                                        {item.title}
+                                    </h2>
+                                    <p className="text-sm sm:text-base font-medium" style={{ color: '#FFD700' }}>
+                                        {item.date}
+                                    </p>
+                                </motion.div>
+                            ))}
                         </div>
                     </div>
                 </div>
-            </div>
-            
-            {/* 3. Prev/Next Buttons - Only show on desktop */}
-            {!isMobile && (
-                <div className="flex justify-center items-center py-6 space-x-8 bg-[#0c1015] mt-4">
-                    <button 
-                        onClick={handlePrev}
-                        className="px-8 py-3 bg-[#363E53] text-white rounded-lg hover:bg-[#576281] transition-colors duration-300 font-medium"
-                        disabled={isTransitioning}
-                    >
-                        Previous
-                    </button>
-                    
-                    <button 
-                        onClick={handleNext}
-                        className="px-8 py-3 bg-[#363E53] text-white rounded-lg hover:bg-[#576281] transition-colors duration-300 font-medium"
-                        disabled={isTransitioning}
-                    >
-                        Next
-                    </button>
-                </div>
-            )}
+
         </div>
     );
 };

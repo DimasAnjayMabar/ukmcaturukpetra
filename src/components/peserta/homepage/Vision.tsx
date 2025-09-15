@@ -226,7 +226,7 @@ export default function Vision() {
         }
       `}</style>
       
-      <section ref={sectionRef} className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section ref={sectionRef} className="relative min-h-screen flex flex-col items-center justify-center overflow-x-hidden">
         <div 
           className="absolute inset-0 bg-gradient-to-r from-[#8392ac] to-[#EDE8D9] pointer-events-none"
         />
