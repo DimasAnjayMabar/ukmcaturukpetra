@@ -8,6 +8,8 @@ import Vision from './Vision';
 import PesertaFeatures from './PesertaFeatures';
 import { supabase } from '../../../db_client/client';
 import { UserProfile } from '../../../types/index';
+import Footer from './Footer';
+import Rulebook from './Rulebook';
 
 const LazyKingScene = lazy(() => import('../models/KingScene'));
 
@@ -234,6 +236,9 @@ export default function HomePage() {
         <section id="timeline" className="">
             <Timeline />
         </section>
+        <section id="rulebook">
+            <Rulebook/>
+        </section>
       </div>
 
       {/* Floating Navigation Buttons */}
@@ -257,6 +262,11 @@ export default function HomePage() {
             );
           })}
         </div>
+
+        <div className='relative z-50'>
+          <Footer/>
+        </div>
     </main>
+    
   );
 }
