@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
-import { Home, Target, Flag, Calendar, Eye, Compass } from 'lucide-react';
+import { Home, Target, Flag, Calendar, Eye, Compass, Book } from 'lucide-react';
 import Navbar from './Navbar';
 import ChessPiecesGuide from './ChessPieceGuide';
 import Timeline from './Timeline';
@@ -28,7 +28,8 @@ export default function HomePage() {
     { id: 'hero', label: 'Home', icon: Home },
     { id: 'visi', label: 'Visi', icon: Eye },
     { id: 'misi', label: 'Misi', icon: Compass },
-    { id: 'timeline', label: 'Timeline', icon: Calendar }
+    { id: 'timeline', label: 'Timeline', icon: Calendar },
+    { id: 'rulebook', label: 'Rulebook', icon: Book}
   ];
 
   useEffect(() => {
@@ -263,7 +264,7 @@ export default function HomePage() {
           })}
         </div>
 
-        <div className='relative z-50'>
+        <div className='relative z-30'>
           <Footer/>
         </div>
     </main>
