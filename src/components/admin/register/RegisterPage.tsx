@@ -7,7 +7,6 @@ import { ErrorModal } from '../../error_modal/ErrorModal';
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState<RegisterFormData>({
-    username: '',
     password: '',
     name: '',
     nrp: '',
@@ -37,7 +36,7 @@ const RegisterPage: React.FC = () => {
     setIsModalOpen(false);
 
     // Validasi input
-    if (!formData.username || !formData.password || !formData.name || !formData.nrp || !formData.email) {
+    if (!formData.password || !formData.name || !formData.nrp || !formData.email) {
       setError('Harap isi semua field!');
       setIsLoading(false);
       return;
@@ -75,16 +74,12 @@ const RegisterPage: React.FC = () => {
       const { data: existingUsers, error: checkError } = await supabase
         .from('user_profile')
         .select('username, email, nrp')
-        .or(`username.eq.${formData.username},email.eq.${formData.email},nrp.eq.${formData.nrp}`);
+        .or(`email.eq.${formData.email},nrp.eq.${formData.nrp}`);
 
       if (checkError) throw checkError;
 
       if (existingUsers && existingUsers.length > 0) {
         const existingUser = existingUsers[0];
-        if (existingUser.username === formData.username) {
-          setErrorType('username_registered');
-          throw new Error('Username sudah terdaftar');
-        }
         if (existingUser.email === formData.email) {
           setErrorType('email_registered');
           throw new Error('Email sudah terdaftar');
@@ -103,7 +98,6 @@ const RegisterPage: React.FC = () => {
           data: {
             name: formData.name,
             role: 'admin',
-            username: formData.username
           },
           emailRedirectTo: `${window.location.origin}/admin/verifikasi-registrasi-sukses`
         }
@@ -116,7 +110,6 @@ const RegisterPage: React.FC = () => {
         .from('user_profile')
         .insert({
           id: authResponse.user?.id,
-          username: formData.username,
           name: formData.name,
           nrp: formData.nrp,
           email: formData.email,
@@ -165,22 +158,22 @@ const RegisterPage: React.FC = () => {
 
         <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              <User size={16} className="inline mr-2" />
-              Username
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <Mail size={16} className="inline mr-2" />
+              Email
             </label>
             <input
-              id="username"
-              name="username"
-              type="text"
+              id="email"
+              name="email"
+              type="email"
               required
-              value={formData.username}
+              value={formData.email}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Masukkan username"
+              placeholder="email@contoh.com"
             />
           </div>
-
+          
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               <Lock size={16} className="inline mr-2" />
@@ -237,22 +230,7 @@ const RegisterPage: React.FC = () => {
             <p className="mt-1 text-xs text-gray-500">Format: huruf kecil diikuti angka (contoh: c14230012)</p>
           </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              <Mail size={16} className="inline mr-2" />
-              Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="email@contoh.com"
-            />
-          </div>
+          
 
           <div>
             <button

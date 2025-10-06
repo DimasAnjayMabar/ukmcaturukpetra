@@ -41,7 +41,6 @@ function Dashboard() {
 
   // SEMUA FUNGSI AKSES DATABASE
 
-  // Cek autentikasi dan load pengambilan data
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
@@ -51,25 +50,36 @@ function Dashboard() {
         return;
       }
 
-      // Fetch user profile data
+      // Fetch user profile data first
       await fetchUserProfile(session.user.id);
+      
+      // Then fetch meetings and setup real-time
       await fetchMeetings();
-      setupRealTimeSubscription(); // Setup real-time subscription
+      
+      // Setup real-time subscription after initial data load
+      const channel = setupRealTimeSubscription();
 
       // Blok navigasi back
       window.history.pushState(null, '', window.location.href);
       window.onpopstate = function() {
         window.history.pushState(null, '', window.location.href);
       };
+
+      return channel; // Return channel for cleanup
     };
 
-    checkAuthAndFetchData();
+    const subscriptionPromise = checkAuthAndFetchData();
 
     return () => {
       // Bersihkan event listener saat komponen unmount
       window.onpopstate = null;
-      // Cleanup real-time subscription
-      supabase.removeAllChannels();
+      
+      // Cleanup real-time subscription properly
+      subscriptionPromise.then(channel => {
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+      });
     };
   }, []);
 
@@ -96,55 +106,72 @@ function Dashboard() {
 
   // Setup Real-time Subscription
   const setupRealTimeSubscription = () => {
-    const channel = supabase
-      .channel('pertemuan_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'pertemuan'
-        },
-        (payload) => {
-          console.log('Real-time change detected:', payload);
-          
-          switch (payload.eventType) {
-            case 'INSERT':
-              // Tambah pertemuan baru ke state
-              setMeetings((prev) => [...prev, payload.new as Pertemuan]);
-              break;
-              
-            case 'UPDATE':
-              // Update pertemuan yang sudah ada
-              setMeetings((prev) =>
-                prev.map((meeting) =>
-                  meeting.id === payload.new.id
-                    ? { ...meeting, ...payload.new }
-                    : meeting
-                )
-              );
-              break;
-              
-            case 'DELETE':
-              // Hapus pertemuan dari state
-              setMeetings((prev) =>
-                prev.filter((meeting) => meeting.id !== payload.old.id)
-              );
-              break;
-              
-            default:
-              break;
+    try {
+      const channel = supabase
+        .channel('pertemuan_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'pertemuan'
+          },
+          (payload) => {
+            console.log('Real-time change detected:', payload);
+            
+            switch (payload.eventType) {
+              case 'INSERT':
+                setMeetings((prev) => {
+                  const newMeeting = payload.new as Pertemuan;
+                  // Avoid duplicates
+                  if (prev.some(meeting => meeting.id === newMeeting.id)) {
+                    return prev;
+                  }
+                  return [newMeeting, ...prev];
+                });
+                break;
+                
+              case 'UPDATE':
+                setMeetings((prev) =>
+                  prev.map((meeting) =>
+                    meeting.id === (payload.new as Pertemuan).id
+                      ? { ...meeting, ...payload.new }
+                      : meeting
+                  )
+                );
+                break;
+                
+              case 'DELETE':
+                setMeetings((prev) =>
+                  prev.filter((meeting) => meeting.id !== (payload.old as { id: string }).id)
+                );
+                break;
+                
+              default:
+                console.log('Unhandled event type:', payload.eventType);
+                break;
+            }
           }
-        }
-      )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('Successfully subscribed to real-time changes');
-        }
-      });
+        )
+        .subscribe((status, error) => {
+          console.log('Subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to real-time changes');
+          }
+          if (error) {
+            console.error('Subscription error:', error);
+            // Optionally retry subscription after delay
+            setTimeout(() => {
+              setupRealTimeSubscription();
+            }, 3000);
+          }
+        });
 
-    return channel;
+      return channel;
+    } catch (error) {
+      console.error('Error setting up real-time subscription:', error);
+      return null;
+    }
   };
 
   if (isUnauthorized) {
@@ -215,9 +242,18 @@ function Dashboard() {
 
   // Tidak perlu lagi fetchMeetings() setelah delete/edit berhasil
   // karena real-time subscription akan handle update otomatis
+  // Fix this function in Dashboard.tsx
   const handleDeleteSuccess = () => {
-    // Real-time subscription akan handle update UI
-    console.log('Delete successful - UI will update via real-time subscription');
+    // Force a refresh of meetings data
+    fetchMeetings();
+    
+    // Or manually remove from state as backup
+    if (meetingToDelete) {
+      setMeetings(prev => prev.filter(meeting => meeting.id !== meetingToDelete));
+    }
+    
+    // Reset the meetingToDelete state
+    setMeetingToDelete(null);
   };
 
   const handleDeleteError = (errorMessage: string) => {

@@ -69,9 +69,9 @@ const generateTotp = async (
 };
 
 interface QrCodePesertaProps {
-  isOpen: boolean;
-  onClose: () => void;
-  isMobile: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  isMobile?: boolean;
 }
 
 const QrCodePeserta: React.FC<QrCodePesertaProps> = ({ isOpen, onClose, isMobile }) => {

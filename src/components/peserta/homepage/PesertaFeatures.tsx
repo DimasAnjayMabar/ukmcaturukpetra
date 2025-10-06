@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { UserProfile } from '../../../types';
-import QrScannerModal from '../feature/QRScannerModal';
+import { X } from 'lucide-react'; // Make sure to import X
+import QrCodePeserta from '../feature/QrCodePeserta';
 
 interface PesertaFeaturesProps {
   userProfile: UserProfile;
@@ -9,13 +10,26 @@ interface PesertaFeaturesProps {
 
 const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  // Mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Body overflow handling
   useEffect(() => {
     if (isQrModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
+    
     return () => {
       document.body.style.overflow = 'unset';
     };
@@ -39,7 +53,8 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
             
             <div className="absolute inset-0 transform-gpu origin-bottom scale-[1.4] md:scale-[0.85]">
 
-              <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-40%] left-[26%]" />
+              {/* Your existing block images */}
+              <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-30%] left-[26%]" />
               <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-30%] left-[50%]" />
               <img src="/svg/blocks/block w m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[30%] sm:bottom-[-50%] md:bottom-[30%] xl:bottom-[-50%] left-[38%]" />
               <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-40 bottom-[20%] sm:bottom-[-63%] md:bottom-[20%] xl:bottom-[-70%] left-[26%]" />
@@ -75,7 +90,6 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
                   />
                 </div>
               </Link>
-
 
               <Link
                 to={featureData.clock.path}
@@ -141,7 +155,27 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
         </div>
       </section>
       
-      <QrScannerModal isOpen={isQrModalOpen} onClose={() => setIsQrModalOpen(false)} />
+      {/* Fixed Modal with proper mobile detection */}
+      {isQrModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md">
+            <div className="bg-white rounded-xl shadow-2xl">
+              <button
+                onClick={() => setIsQrModalOpen(false)}
+                className="absolute -top-3 -right-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10 border border-gray-200 transition-colors"
+              >
+                <X size={18} className="text-gray-600" />
+              </button>
+              
+              <QrCodePeserta 
+                isOpen={isQrModalOpen} 
+                onClose={() => setIsQrModalOpen(false)} 
+                isMobile={isMobile}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

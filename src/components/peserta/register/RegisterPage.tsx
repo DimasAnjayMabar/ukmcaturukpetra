@@ -31,7 +31,6 @@ const generateBase32Secret = (byteLength = 20): string => {
 
 const RegisterPagePeserta: React.FC = () => {
   const [formData, setFormData] = useState<RegisterFormData>({
-    username: "",
     password: "",
     name: "",
     nrp: "",
@@ -42,7 +41,6 @@ const RegisterPagePeserta: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorType, setErrorType] = useState<
     | "email_registered"
-    | "username_registered"
     | "nrp_registered"
     | "invalid_email"
     | "invalid_nrp"
@@ -67,7 +65,6 @@ const RegisterPagePeserta: React.FC = () => {
 
     // Basic validations
     if (
-      !formData.username ||
       !formData.password ||
       !formData.name ||
       !formData.nrp ||
@@ -111,17 +108,13 @@ const RegisterPagePeserta: React.FC = () => {
         .from("user_profile")
         .select("username, email, nrp")
         .or(
-          `username.eq.${formData.username},email.eq.${formData.email},nrp.eq.${formData.nrp}`
+          `email.eq.${formData.email},nrp.eq.${formData.nrp}`
         );
 
       if (checkError) throw checkError;
 
       if (existingUsers && existingUsers.length > 0) {
         const existingUser = existingUsers[0];
-        if (existingUser.username === formData.username) {
-          setErrorType("username_registered");
-          throw new Error("Username sudah terdaftar");
-        }
         if (existingUser.email === formData.email) {
           setErrorType("email_registered");
           throw new Error("Email sudah terdaftar");
@@ -141,7 +134,6 @@ const RegisterPagePeserta: React.FC = () => {
             data: {
               name: formData.name,
               role: "peserta",
-              username: formData.username,
             },
             emailRedirectTo: `${window.location.origin}/peserta/verifikasi-registrasi-sukses`,
           },
@@ -162,7 +154,6 @@ const RegisterPagePeserta: React.FC = () => {
         .from("user_profile")
         .insert({
           id: authUserId,
-          username: formData.username,
           name: formData.name,
           nrp: formData.nrp,
           email: formData.email,
@@ -260,20 +251,20 @@ const RegisterPagePeserta: React.FC = () => {
           <div className="space-y-2">
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <User className="h-5 w-5 text-[#DADBD3]/60" />
+                <Mail className="h-5 w-5 text-[#DADBD3]/60" />
               </span>
               <input
-                id="username"
-                name="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
                 required
-                value={formData.username}
+                value={formData.email}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#0c1015] text-[#DADBD3] placeholder-[#DADBD3]/50 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] transition-all duration-300"
-                placeholder="Username"
+                placeholder="Email Address"
               />
             </div>
-
+            
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Lock className="h-5 w-5 text-[#DADBD3]/60" />
@@ -325,21 +316,7 @@ const RegisterPagePeserta: React.FC = () => {
               />
             </div>
 
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Mail className="h-5 w-5 text-[#DADBD3]/60" />
-              </span>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#0c1015] text-[#DADBD3] placeholder-[#DADBD3]/50 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] transition-all duration-300"
-                placeholder="Email Address"
-              />
-            </div>
+            
           </div>
 
           <div className="space-y-4">
