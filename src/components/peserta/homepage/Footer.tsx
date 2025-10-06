@@ -65,7 +65,7 @@ export default function Footer() {
                 </a>
 
                 <a
-                  href=""
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSeNocCO-v-tgQColGVN_cp5r6S5Fcut4FppINMxvRjP9wu6Sw/viewform?usp=dialog"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl"
