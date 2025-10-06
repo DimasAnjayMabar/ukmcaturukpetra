@@ -15,7 +15,7 @@ import RegistrationSuccessPeserta from './components/peserta/register/Registrati
 import EmailVerificationSuccessPeserta from './components/peserta/register/EmailVerificationSuccess';
 import VerifyForgotPasswordPeserta from './components/peserta/forgot_password/VerifyForgotPassword';
 import ForgotPasswordPeserta from './components/peserta/forgot_password/ForgotPassword';
-import HomePage from "./pages/HomePage";
+import HomePage from "./components/peserta/homepage/HomePage";
 import ChessClock from './components/peserta/feature/ChessClock';
 import AttendanceList from './components/peserta/feature/DaftarKehadiran';
 import Scoreboard from './components/peserta/feature/Scoreboard';

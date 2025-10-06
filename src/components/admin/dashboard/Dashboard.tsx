@@ -1,4 +1,4 @@
-import { Calendar, DoorOpen, Plus, Trophy, Swords } from 'lucide-react';
+import { Calendar, DoorOpen, Plus, Trophy, Swords, Menu, X } from 'lucide-react';
 import { MeetingCard } from './MeetingCard';
 import { AddMeetingModal } from './AddMeetingModal';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,16 @@ import { Pertemuan } from '../../../types';
 import { EditMeetingModal } from './EditMeetingModal';
 import { DeleteMeetingModal } from './DeleteMeetingModal';
 import Matchmaking from './Matchmaking';
+import { FiLogOut, FiUser } from 'react-icons/fi';
+
+// Add interface for user profile
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  nrp: string;
+}
 
 function Dashboard() {
   const [meetings, setMeetings] = useState<Pertemuan[]>([]);
@@ -26,6 +36,8 @@ function Dashboard() {
   const [editError, setEditError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'meetings' | 'matchmaking'>('meetings');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // Add state for user profile
 
   // SEMUA FUNGSI AKSES DATABASE
 
@@ -39,6 +51,8 @@ function Dashboard() {
         return;
       }
 
+      // Fetch user profile data
+      await fetchUserProfile(session.user.id);
       await fetchMeetings();
       setupRealTimeSubscription(); // Setup real-time subscription
 
@@ -58,6 +72,27 @@ function Dashboard() {
       supabase.removeAllChannels();
     };
   }, []);
+
+  // Fetch user profile data
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profile')
+        .select('*')
+        .eq('id', userId)
+        .eq('role', 'admin')
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+
+      setUserProfile(data);
+    } catch (err) {
+      console.error('Error in fetchUserProfile:', err);
+    }
+  };
 
   // Setup Real-time Subscription
   const setupRealTimeSubscription = () => {
@@ -198,101 +233,161 @@ function Dashboard() {
     navigate(`/admin/pertemuan/${meetingId}`);
   };
 
+  // Navigasi item
+  const navItems = [
+    { id: 'meetings', label: 'Daftar Pertemuan', icon: Calendar },
+    { id: 'matchmaking', label: 'Matchmaking', icon: Swords },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar Overlay for mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Side Navbar */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <Trophy className="text-white" size={24} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-800">Admin Kegiatan Catur</h1>
-                <p className="text-gray-600">Kelola pertemuan dan turnamen catur</p>
+                <h1 className="text-xl font-bold text-gray-800">Admin Catur</h1>
+                <p className="text-gray-600 text-sm">Kelola pertemuan catur</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <Plus size={20} />
-                Tambah Pertemuan
-              </button>
-              <button
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                <DoorOpen size={20} />
-                Logout
-              </button>
-            </div>
+          </div>
+
+           {/* User Profile Section */}
+           <div className="flex items-center border-b p-4">
+                          <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                            <FiUser size={20} />
+                          </div>
+                          <div>
+                            <p className="font-medium">{userProfile?.name || 'Nama Peserta'}</p>
+                            <p className="text-sm text-gray-500">NRP: {userProfile?.nrp || '00000000'}</p>
+                          </div>
+                        </div>
+                        
+          {/* Navigation */}
+          <nav className="flex-1 p-4">
+            <ul className="space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => {
+                        setActiveView(item.id as 'meetings' | 'matchmaking');
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                        activeView === item.id
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon size={20} />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Logout Button */}
+          <div className="border-t p-4">
+            <button
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="flex w-full items-center rounded-lg p-3 text-red-600 transition-colors hover:bg-red-50"
+            >
+              <FiLogOut className="mr-3" size={20} />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* View Toggles */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setActiveView('meetings')}
-            className={`py-2 px-4 rounded-lg font-medium flex items-center gap-2 ${activeView === 'meetings' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            <Calendar size={20} />
-            Daftar Pertemuan
-          </button>
-          <button
-            onClick={() => setActiveView('matchmaking')}
-            className={`py-2 px-4 rounded-lg font-medium flex items-center gap-2 ${activeView === 'matchmaking' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-          >
-            <Swords size={20} />
-            Matchmaking
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeView === 'meetings' ? (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-xl font-bold text-gray-800">Daftar Pertemuan</h2>
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-0">
+        {/* Top Header */}
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 lg:hidden"
+                aria-label="Toggle sidebar"
+              >
+                <Menu size={24} />
+              </button>
+              
+              <div className="lg:hidden text-center">
+                <h1 className="text-xl font-bold text-gray-800">Admin Kegiatan Catur</h1>
+              </div>
+              
+              <div className="w-10 lg:hidden"></div> {/* Spacer for mobile */}
             </div>
-            
-            {meetings.length > 0 ? (
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {meetings.map((meeting) => (
-                    <MeetingCard
-                      key={meeting.id}
-                      meeting={meeting}
-                      onEditClick={handleEditClick}
-                      onDeleteClick={handleDeleteClick}
-                      onViewDetails={handleViewDetails}
-                    />
-                  ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+          {activeView === 'meetings' ? (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-lg md:text-xl font-bold text-gray-800">Daftar Pertemuan</h2>
+              </div>
+              
+              {meetings.length > 0 ? (
+                <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    {meetings.map((meeting) => (
+                      <MeetingCard
+                        key={meeting.id}
+                        meeting={meeting}
+                        onEditClick={handleEditClick}
+                        onDeleteClick={handleDeleteClick}
+                        onViewDetails={handleViewDetails}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-white rounded-xl shadow-lg">
-                <Calendar size={64} className="mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-600 mb-2">Belum ada pertemuan</h3>
-                <p className="text-gray-500 mb-6">Mulai dengan menambahkan pertemuan pertama Anda</p>
-                <button
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors duration-200"
-                >
-                  Tambah Pertemuan
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <Matchmaking />
-        )}
+              ) : (
+                <div className="text-center py-8 md:py-12 bg-white rounded-xl shadow-lg">
+                  <Calendar size={48} className="mx-auto mb-3 md:mb-4 text-gray-300" />
+                  <h3 className="text-base md:text-lg font-medium text-gray-600 mb-2">Belum ada pertemuan</h3>
+                  <p className="text-gray-500 text-sm md:text-base mb-4 md:mb-6">Mulai dengan menambahkan pertemuan pertama Anda</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Matchmaking />
+          )}
+        </div>
       </div>
+
+      {/* FAB - Floating Action Button (only shown in meetings view) */}
+      {activeView === 'meetings' && (
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-10 flex items-center justify-center"
+          aria-label="Tambah Pertemuan"
+        >
+          <Plus size={24} />
+        </button>
+      )}
         
       {/* Add Meeting Modal */}
       <AddMeetingModal

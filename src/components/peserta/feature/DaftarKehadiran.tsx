@@ -18,7 +18,9 @@ const AttendanceList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const style = document.createElement('style');

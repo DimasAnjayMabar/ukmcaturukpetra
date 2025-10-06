@@ -3,7 +3,7 @@ import { Instagram, MessageSquare } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer>
+    <footer className="relative z-50">
       <div className="bg-gradient-to-l from-[#47618a] via-[#E3E1DA] to-[#47618a]">
         <div className="container mx-auto px-4 py-10">
           <div className="grid grid-cols-1 items-center gap-8 text-center md:grid-cols-[1fr_auto_1fr] md:gap-12 md:text-left">
@@ -29,24 +29,39 @@ export default function Footer() {
             </div>
 
             <div className="flex justify-center md:justify-start">
-              <div className="flex flex-col items-center gap-4 font-semibold md:items-start">
+              <div className="flex flex-col items-center gap-6 font-semibold md:items-start">
                 <a
                   href="https://www.instagram.com/ukmcaturukpetra?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 text-gray-700 hover:text-black transition-colors"
+                  className="group flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
-                  <Instagram className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span>@ukmcaturukpetra</span>
+                  <div className="bg-gradient-to-r from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] p-2 rounded-full">
+                    <Instagram className="w-5 h-5 text-white transition-transform group-hover:scale-110" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm text-gray-600">Instagram</p>
+                    <p className="text-[#0f1028] font-bold group-hover:text-[#ee2a7b] transition-colors">
+                      @ukmcaturukpetra
+                    </p>
+                  </div>
                 </a>
+
                 <a
                   href="https://line.me/R/ti/p/@590yfbcf"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 text-gray-700 hover:text-black transition-colors"
+                  className="group flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
-                  <MessageSquare className="w-5 h-5 transition-transform group-hover:scale-110" />
-                  <span>@590yfbcf</span>
+                  <div className="bg-gradient-to-r from-[#00b900] to-[#00c300] p-2 rounded-full">
+                    <MessageSquare className="w-5 h-5 text-white transition-transform group-hover:scale-110" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm text-gray-600">Line</p>
+                    <p className="text-[#0f1028] font-bold group-hover:text-[#00b900] transition-colors">
+                      @590yfbcf
+                    </p>
+                  </div>
                 </a>
               </div>
             </div>

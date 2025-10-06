@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model UserProfile {
+  id String @id
+  username String @unique
+  name String
+  nrp String @unique
+  email String @unique
+  total_score Float? @default(0)
+  role String
+  email_verified_at DateTime?
+  @@map("user_profile")
+  Kehadiranuser Kehadiranuser[] @relation("kehadiran_user")
+  Pemain1 Turnamen[] @relation("pemain_1")
+  Pemain2 Turnamen[] @relation("pemain_2")
+  qr_code String? //ini yang ditambahkan, nullable karena role admin tidak perlu qr
+}
+
+model Pertemuan {
+  id              Int      @id @default(autoincrement())
+  judul_pertemuan String
+  tanggal         DateTime @db.Date  // Hanya tanggal (contoh: 2025-08-05)
+  waktu_mulai     DateTime @db.Time  // Hanya waktu (contoh: 13:30:00)
+  waktu_selesai   DateTime @db.Time  // Hanya waktu (contoh: 15:00:00)
+  lokasi          String
+  deskripsi       String?
+  is_tournament   Boolean  @default(false)
+  qr_code String? @unique //ini nullable juga karena tidak butuh, kenapa tidak dihapus?, sebenarnya bebas, tapi hanya untuk mempersingkat waktu saja. nanti kan waktu ditambah pertemuan juga qr_code dari object frontend dikosongi saja 
+  @@map("pertemuan")
+  winner String?
+  Kehadiranuser Kehadiranuser[] @relation("pertemuan")
+  Turnamen Turnamen[] @relation("pertandingan")
+}
+
+model Kehadiranuser { 
+  id Int @id @default(autoincrement())
+  user_id String
+  kehadiran UserProfile @relation("kehadiran_user", fields: [user_id], references: [id])
+  pertemuan_id Int
+  pertemuan Pertemuan @relation("pertemuan" , fields: [pertemuan_id], references: [id])
+  isAttending Boolean @default(false)
+  waktu_kehadiran DateTime @db.Date()
+  @@map("kehadiran")
+}
+
+model Turnamen {
+  id Int @id @default(autoincrement())
+  match_ke Int @default(autoincrement())
+  pertemuan_id Int
+  pertemuan Pertemuan @relation("pertandingan", fields: [pertemuan_id], references: [id])
+  pemain_1_id String
+  pemain1 UserProfile @relation("pemain_1", fields: [pemain_1_id], references: [id])
+  pemain_1_name String?
+  hasil_pemain_1 Float?
+  pemain_2_id String
+  pemain2 UserProfile @relation("pemain_2", fields: [pemain_2_id], references: [id])
+  pemain_2_name String?
+  hasil_pemain_2 Float?
+  pemenang String?
+  round Int? 
+  pairingId Int?
+  @@map("turnamen")
+}

@@ -13,58 +13,48 @@ const EmailVerificationSuccess: React.FC = () => {
   const [errorType, setErrorType] = useState<'other' | undefined>();
   const [customMessage, setCustomMessage] = useState<string>('');
 
-  const verifyAndLogout = async () => {
-    try {
-      setIsLoading(true);
-      const email = localStorage.getItem('email');
-      
-      if (!email) {
-        throw new Error('Email tidak ditemukan di localStorage');
+  const verifyAndLogout = async (): Promise<boolean> => {
+      try {
+        setIsLoading(true);
+  
+        // 🔹 Ambil session langsung dari Supabase
+        const { data: sessionData, error } = await supabase.auth.getSession();
+        if (error) throw error;
+  
+        const user = sessionData.session?.user;
+        if (!user) {
+          throw new Error("Session tidak ditemukan. Silakan klik ulang link verifikasi.");
+        }
+  
+        // 🔹 Update user_profile
+        const { error: updateError } = await supabase
+          .from("user_profile")
+          .update({ email_verified_at: new Date().toISOString() })
+          .eq("id", user.id); // atau .eq("email", user.email)
+  
+        if (updateError) {
+          console.warn("Gagal update user_profile:", updateError.message);
+        }
+  
+        // 🔹 Tandai sukses & logout
+        setIsVerified(true);
+        await supabase.auth.signOut();
+  
+        return true;
+      } catch (err) {
+        console.error("Verification error:", err);
+        setErrorType("other");
+        setCustomMessage(
+          err instanceof Error
+            ? err.message
+            : "Terjadi kesalahan saat verifikasi email. Silakan coba lagi nanti."
+        );
+        setIsModalOpen(true);
+        return false;
+      } finally {
+        setIsLoading(false);
       }
-
-      // 1. Update email_verified_at di tabel user_profile
-      const { data: updatedUser, error: updateError } = await supabase
-        .from('user_profile')
-        .update({ 
-          email_verified_at: new Date().toISOString() 
-        })
-        .eq('email', email)
-        .select();
-
-      if (updateError) {
-        throw new Error(`Gagal update verifikasi email: ${updateError.message}`);
-      }
-
-      if (!updatedUser || updatedUser.length === 0) {
-        throw new Error('User dengan email tersebut tidak ditemukan');
-      }
-
-      // 2. Sign out user dari Supabase
-      const { error: signOutError } = await supabase.auth.signOut();
-      
-      if (signOutError) {
-        throw new Error(`Gagal sign out: ${signOutError.message}`);
-      }
-
-      // 3. Bersihkan localStorage dan update state
-      localStorage.removeItem('email');
-      setIsVerified(true);
-      
-    } catch (error) {
-      console.error('Verification error:', error);
-      setErrorType('other');
-      setCustomMessage(
-        error instanceof Error 
-          ? error.message 
-          : 'Terjadi kesalahan saat verifikasi email. Silakan coba lagi nanti.'
-      );
-      setIsModalOpen(true);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-    return true;
-  };
+    };
 
   useEffect(() => {
     // Panggil verifyAndLogout saat komponen di-mount

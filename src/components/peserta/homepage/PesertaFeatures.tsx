@@ -39,7 +39,7 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
             
             <div className="absolute inset-0 transform-gpu origin-bottom scale-[1.4] md:scale-[0.85]">
 
-              <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-30%] left-[26%]" />
+              <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-40%] left-[26%]" />
               <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[40%] sm:bottom-[-38%] md:bottom-[40%]  xl:bottom-[-30%] left-[50%]" />
               <img src="/svg/blocks/block w m.svg" alt="Decoration" className="absolute w-[24%] z-20 bottom-[30%] sm:bottom-[-50%] md:bottom-[30%] xl:bottom-[-50%] left-[38%]" />
               <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute w-[24%] z-40 bottom-[20%] sm:bottom-[-63%] md:bottom-[20%] xl:bottom-[-70%] left-[26%]" />
