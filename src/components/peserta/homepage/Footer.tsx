@@ -1,5 +1,5 @@
 import React from 'react';
-import { Instagram, MessageSquare } from 'lucide-react';
+import { Bug, Instagram, MessageSquare } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -60,6 +60,23 @@ export default function Footer() {
                     <p className="text-sm text-gray-600">Line</p>
                     <p className="text-[#0f1028] font-bold group-hover:text-[#00b900] transition-colors">
                       @590yfbcf
+                    </p>
+                  </div>
+                </a>
+
+                <a
+                  href=""
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-3 px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <div className="bg-blue-600 from-[#00b900] to-[#00c300] p-2 rounded-full">
+                    <Bug className="w-5 h-5 text-white transition-transform group-hover:scale-110" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm text-gray-600">Google Form</p>
+                    <p className="text-[#0f1028] font-bold group-hover:text-blue-600 transition-colors">
+                      Report bug here
                     </p>
                   </div>
                 </a>
