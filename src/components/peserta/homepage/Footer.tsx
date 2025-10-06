@@ -72,7 +72,7 @@ export default function Footer() {
       <div className="bg-[#0c1015]">
          <div className="container mx-auto px-4">
             <div className="text-center text-gray-500 text-sm py-6">
-              © {new Date().getFullYear()} UKM Catur. All Rights Reserved.
+              © 2025 - 2026 UKM Catur. All Rights Reserved.
             </div>
          </div>
       </div>

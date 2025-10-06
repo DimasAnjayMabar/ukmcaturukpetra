@@ -75,11 +75,21 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
                   isScrolled ? 'h-8 md:h-9' : 'h-8 md:h-10'
                 }`}
               />
-              <span className={`font-bold text-gray-900 tracking-tight transition-all duration-200 ${
+              {/* START: MODIFIED CODE */}
+              <div className={`font-groote tracking-tight flex items-center transition-all duration-200 ${
                 isScrolled ? 'text-xl md:text-xl' : 'text-xl md:text-2xl'
               }`}>
-                UKM CATUR
-              </span>
+                <span className="font-bold bg-gradient-to-t from-[#0c1015] to-[#576281] bg-clip-text text-transparent">
+                  UKM
+                </span>
+                <span className="bg-gradient-to-t from-[#0c1015] via-[#8392ac] to-[#d6d2c4] bg-clip-text text-transparent mx-2">
+                  |
+                </span>
+                <span className="bg-gradient-to-t from-[#0c1015] to-[#576281] bg-clip-text text-transparent">
+                  catur.
+                </span>
+              </div>
+              {/* END: MODIFIED CODE */}
             </Link>
 
             <div className="hidden md:flex items-center space-x-4 z-10">
@@ -165,8 +175,6 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
               )}
             </div>
           </div>
-
-          {/* Hapus mobile menu untuk navigasi section karena sudah ada FAB */}
         </div>
       </nav>
 
