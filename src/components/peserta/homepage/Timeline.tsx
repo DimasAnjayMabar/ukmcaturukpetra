@@ -3,25 +3,25 @@ import { motion } from 'framer-motion';
 import { AnimatedChessboard } from './AnimatedChessboard';
 
 const specificDates = [
-    "24 October 2025", "31 October 2025", "7 November 2025", "14 November 2025", "21 November 2025",
+    "17 October 2025", "31 October 2025", "7 November 2025", "14 November 2025", "21 November 2025",
     "20 February 2026", "27 February 2026", "6 March 2026", "13 March 2026", "27 March 2026",
-    "8 May 2026", "15 May 2026", "22 May 2026", "29 May 2026"
+    "8 May 2026", "15 May 2026", "22 May 2026", "29 - 30 May 2026"
 ];
 
 const timelineContent = [
     { week: 'Week 1', title: 'Introduction to Chess'},
     { week: 'Week 2', title: 'Chess Notation'},
-    { week: 'Week 3', title: 'Opening Phase'},
-    { week: 'Week 4', title: 'Single Rapid Tournament'},
-    { week: 'Week 5', title: 'Opening System I'},
-    { week: 'Week 6', title: 'Opening System II'},
-    { week: 'Week 7', title: 'Simul Games'},
-    { week: 'Week 8', title: 'Middlegame (Tactics)'},
-    { week: 'Week 9', title: 'Middlegame (Types of Checkmate)'},
-    { week: 'Week 10', title: '10+ Years of Playing Chess' },
-    { week: 'Week 11', title: 'Single Blitz Tournament' },
-    { week: 'Week 12', title: 'Basic Endgames' },
-    { week: 'Week 13', title: 'Advanced Endgames' },
+    { week: 'Week 3', title: 'Single Rapid Tournament'},
+    { week: 'Week 4', title: 'Opening Phase'},
+    { week: 'Week 5', title: 'Opening System'},
+    { week: 'Week 6', title: 'Simul Games'},
+    { week: 'Week 7', title: 'Middlegame (Tactics)'},
+    { week: 'Week 8', title: 'Middlegame (Types of Checkmate)'},
+    { week: 'Week 9', title: '10+ Years of Playing Chess'},
+    { week: 'Week 10', title: 'Single Blitz Tournament' },
+    { week: 'Week 11', title: 'Basic Endgames' },
+    { week: 'Week 12', title: 'Advanced endgames' },
+    { week: 'Week 13', title: 'Chess Festival' },
     { week: 'Week 14', title: 'Petra Chess Competition' },
 ];
 
@@ -56,6 +56,7 @@ const Timeline: React.FC = () => {
 
     return (
         <div className="relative w-full bg-[#0c1015] min-h-screen flex flex-col justify-center py-12 sm:py-16">
+            
                 
                 {/* desktop navigation */}
                 <div className="absolute hidden lg:flex right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 flex-col items-end gap-4">
