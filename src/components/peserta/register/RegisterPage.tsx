@@ -4,6 +4,8 @@ import { User, Lock, Mail, Loader2, CreditCard } from "lucide-react";
 import { RegisterFormData } from "../../../types";
 import { supabase } from "../../../db_client/client";
 import { ErrorModal } from "../../error_modal/ErrorModal";
+import * as XLSX from "xlsx";
+
 
 // Generate a Base32 (RFC 4648) secret using Web Crypto.
 // Default 20 bytes (~160-bit), suitable for TOTP.
@@ -30,6 +32,39 @@ const generateBase32Secret = (byteLength = 20): string => {
 };
 
 const RegisterPagePeserta: React.FC = () => {
+  const [validNRPList, setValidNRPList] = useState<string[]>([]);
+
+  // Load daftar NRP valid dari Excel
+  React.useEffect(() => {
+    const loadValidNRP = async () => {
+      try {
+        const response = await fetch("/pendaftar/validasi_pendaftar.xlsx");
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+        // Asumsikan kolom NRP ada di kolom pertama, atau bernama "NRP"
+        const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        const headerRow = data[0];
+        const nrpIndex = headerRow.findIndex(
+          (col: any) => typeof col === "string" && col.toLowerCase().includes("nrp")
+        );
+
+        const nrps = data
+          .slice(1)
+          .map((row: any) => String(row[nrpIndex]).trim().toLowerCase())
+          .filter((nrp) => !!nrp);
+
+        setValidNRPList(nrps);
+        console.log("Loaded valid NRP list:", nrps);
+      } catch (error) {
+        console.error("Gagal memuat file validasi_pendaftar.xlsx:", error);
+      }
+    };
+
+    loadValidNRP();
+  }, []);
+
   const [formData, setFormData] = useState<RegisterFormData>({
     password: "",
     name: "",
@@ -102,11 +137,20 @@ const RegisterPagePeserta: React.FC = () => {
       return;
     }
 
+    // Validasi NRP terhadap daftar dari Excel
+    if (validNRPList.length > 0 && !validNRPList.includes(formData.nrp.toLowerCase())) {
+      setErrorType("invalid_nrp");
+      setError("Anda tidak mendaftar UKM Catur");
+      setIsModalOpen(true);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // 1) Check duplicates (username/email/nrp)
       const { data: existingUsers, error: checkError } = await supabase
         .from("user_profile")
-        .select("username, email, nrp")
+        .select("name, email, nrp")
         .or(
           `email.eq.${formData.email},nrp.eq.${formData.nrp}`
         );
