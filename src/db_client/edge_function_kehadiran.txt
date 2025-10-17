@@ -1,0 +1,481 @@
+VERSI 1
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+};
+const base32ToBytes = (b32)=>{
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const cleaned = b32.replace(/=+$/g, "").toUpperCase();
+  let bits = "";
+  for (const ch of cleaned){
+    const v = alphabet.indexOf(ch);
+    if (v < 0) continue;
+    bits += v.toString(2).padStart(5, "0");
+  }
+  const out = [];
+  for(let i = 0; i + 8 <= bits.length; i += 8){
+    out.push(parseInt(bits.slice(i, i + 8), 2));
+  }
+  return new Uint8Array(out);
+};
+async function totp(secretB32, counter, digits = 6) {
+  const keyBytes = base32ToBytes(secretB32);
+  const ab = new ArrayBuffer(keyBytes.byteLength);
+  new Uint8Array(ab).set(keyBytes);
+  const msg = new ArrayBuffer(8);
+  const view = new DataView(msg);
+  view.setUint32(0, Math.floor(counter / 0x100000000));
+  view.setUint32(4, counter % 0x100000000);
+  const cryptoKey = await crypto.subtle.importKey("raw", ab, {
+    name: "HMAC",
+    hash: "SHA-1"
+  }, false, [
+    "sign"
+  ]);
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, msg);
+  const h = new Uint8Array(sig);
+  const off = h[h.length - 1] & 0x0f;
+  const bin = (h[off] & 0x7f) << 24 | (h[off + 1] & 0xff) << 16 | (h[off + 2] & 0xff) << 8 | h[off + 3] & 0xff;
+  const mod = 10 ** digits;
+  return (bin % mod).toString().padStart(digits, "0");
+}
+Deno.serve(async (req)=>{
+  try {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", {
+        headers: corsHeaders
+      });
+    }
+    if (req.method !== "POST") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: corsHeaders
+      });
+    }
+    const { token, pertemuanId } = await req.json();
+    console.log("Incoming body:", {
+      token,
+      pertemuanId
+    });
+    if (!token || pertemuanId === undefined || pertemuanId === null) {
+      return Response.json({
+        success: false,
+        message: "Bad payload"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    const pid = typeof pertemuanId === "number" ? pertemuanId : Number(String(pertemuanId).trim());
+    if (!Number.isInteger(pid)) {
+      return Response.json({
+        success: false,
+        message: "Invalid pertemuanId"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    // 1) Ensure pertemuan exists (avoid FK violation)
+    const { data: meeting, error: meetErr } = await supabase.from("pertemuan").select("id").eq("id", pid).maybeSingle();
+    if (meetErr) {
+      console.log("meetErr:", meetErr);
+      return Response.json({
+        success: false,
+        message: "DB error on meeting lookup",
+        details: meetErr.details ?? meetErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    if (!meeting) {
+      return Response.json({
+        success: false,
+        message: "Pertemuan tidak ditemukan"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    // 2) Find user by TOTP
+    const { data: users, error: usersErr } = await supabase.from("user_profile").select("id, name, nrp, qr_code");
+    if (usersErr) {
+      console.log("usersErr:", usersErr);
+      return Response.json({
+        success: false,
+        message: "DB error on user lookup",
+        details: usersErr.details ?? usersErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const step = 30;
+    const ctr = Math.floor(now / step);
+    const windows = [
+      ctr - 1,
+      ctr,
+      ctr + 1
+    ];
+    let matched;
+    if (users) {
+      for (const u of users){
+        const secret = u.qr_code;
+        if (!secret) continue;
+        for (const w of windows){
+          const code = await totp(secret, w, 6);
+          if (code === token) {
+            matched = {
+              id: u.id,
+              name: u.name,
+              nrp: u.nrp
+            };
+            break;
+          }
+        }
+        if (matched) break;
+      }
+    }
+    if (!matched) {
+      return Response.json({
+        success: false,
+        message: "Token tidak valid / kedaluwarsa"
+      }, {
+        headers: corsHeaders
+      });
+    }
+    // 3) Upsert kehadiran
+    const { data: existing, error: existErr } = await supabase.from("kehadiran").select("id").eq("user_id", matched.id).eq("pertemuan_id", pid).maybeSingle();
+    if (existErr) {
+      console.log("existErr:", existErr);
+      return Response.json({
+        success: false,
+        message: "DB error on attendance lookup",
+        details: existErr.details ?? existErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    const today = new Date().toISOString().split("T")[0];
+    let status = "inserted";
+    if (existing?.id) {
+      const { error: updErr } = await supabase.from("kehadiran").update({
+        isAttending: true,
+        waktu_kehadiran: today
+      }).eq("id", existing.id);
+      if (updErr) {
+        console.log("updErr:", updErr);
+        return Response.json({
+          success: false,
+          message: "DB error on attendance update",
+          details: updErr.details ?? updErr.message
+        }, {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+      status = "updated";
+    } else {
+      const { error: insErr } = await supabase.from("kehadiran").insert({
+        user_id: matched.id,
+        pertemuan_id: pid,
+        isAttending: true,
+        waktu_kehadiran: today
+      });
+      if (insErr) {
+        console.log("insErr:", insErr);
+        return Response.json({
+          success: false,
+          message: "DB error on attendance insert",
+          details: insErr.details ?? insErr.message
+        }, {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+      status = "inserted";
+    }
+    return Response.json({
+      success: true,
+      status,
+      user: matched
+    }, {
+      headers: corsHeaders
+    });
+  } catch (e) {
+    console.log("Unhandled error:", e);
+    return Response.json({
+      success: false,
+      message: e instanceof Error ? e.message : "Error"
+    }, {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+});
+
+VERSI 2
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+};
+const base32ToBytes = (b32)=>{
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const cleaned = b32.replace(/=+$/g, "").toUpperCase();
+  let bits = "";
+  for (const ch of cleaned){
+    const v = alphabet.indexOf(ch);
+    if (v < 0) continue;
+    bits += v.toString(2).padStart(5, "0");
+  }
+  const out = [];
+  for(let i = 0; i + 8 <= bits.length; i += 8){
+    out.push(parseInt(bits.slice(i, i + 8), 2));
+  }
+  return new Uint8Array(out);
+};
+async function totp(secretB32, counter, digits = 6) {
+  const keyBytes = base32ToBytes(secretB32);
+  const ab = new ArrayBuffer(keyBytes.byteLength);
+  new Uint8Array(ab).set(keyBytes);
+  const msg = new ArrayBuffer(8);
+  const view = new DataView(msg);
+  view.setUint32(0, Math.floor(counter / 0x100000000));
+  view.setUint32(4, counter % 0x100000000);
+  const cryptoKey = await crypto.subtle.importKey("raw", ab, {
+    name: "HMAC",
+    hash: "SHA-1"
+  }, false, [
+    "sign"
+  ]);
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, msg);
+  const h = new Uint8Array(sig);
+  const off = h[h.length - 1] & 0x0f;
+  const bin = (h[off] & 0x7f) << 24 | (h[off + 1] & 0xff) << 16 | (h[off + 2] & 0xff) << 8 | h[off + 3] & 0xff;
+  const mod = 10 ** digits;
+  return (bin % mod).toString().padStart(digits, "0");
+}
+Deno.serve(async (req)=>{
+  try {
+    if (req.method === "OPTIONS") {
+      return new Response("ok", {
+        headers: corsHeaders
+      });
+    }
+    if (req.method !== "POST") {
+      return new Response("Method Not Allowed", {
+        status: 405,
+        headers: corsHeaders
+      });
+    }
+    const { token, pertemuanId, timezoneOffset, clientTime } = await req.json();
+    console.log("Incoming body:", {
+      token,
+      pertemuanId,
+      timezoneOffset,
+      clientTime: clientTime ? new Date(clientTime).toISOString() : null
+    });
+    if (!token || pertemuanId === undefined || pertemuanId === null) {
+      return Response.json({
+        success: false,
+        message: "Bad payload"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    const pid = typeof pertemuanId === "number" ? pertemuanId : Number(String(pertemuanId).trim());
+    if (!Number.isInteger(pid)) {
+      return Response.json({
+        success: false,
+        message: "Invalid pertemuanId"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    // 1) Ensure pertemuan exists (avoid FK violation)
+    const { data: meeting, error: meetErr } = await supabase.from("pertemuan").select("id").eq("id", pid).maybeSingle();
+    if (meetErr) {
+      console.log("meetErr:", meetErr);
+      return Response.json({
+        success: false,
+        message: "DB error on meeting lookup",
+        details: meetErr.details ?? meetErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    if (!meeting) {
+      return Response.json({
+        success: false,
+        message: "Pertemuan tidak ditemukan"
+      }, {
+        status: 400,
+        headers: corsHeaders
+      });
+    }
+    // 2) Find user by TOTP
+    const { data: users, error: usersErr } = await supabase.from("user_profile").select("id, name, nrp, qr_code");
+    if (usersErr) {
+      console.log("usersErr:", usersErr);
+      return Response.json({
+        success: false,
+        message: "DB error on user lookup",
+        details: usersErr.details ?? usersErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const step = 30;
+    const ctr = Math.floor(now / step);
+    const windows = [
+      ctr - 1,
+      ctr,
+      ctr + 1
+    ];
+    let matched;
+    if (users) {
+      for (const u of users){
+        const secret = u.qr_code;
+        if (!secret) continue;
+        for (const w of windows){
+          const code = await totp(secret, w, 6);
+          if (code === token) {
+            matched = {
+              id: u.id,
+              name: u.name,
+              nrp: u.nrp
+            };
+            break;
+          }
+        }
+        if (matched) break;
+      }
+    }
+    if (!matched) {
+      return Response.json({
+        success: false,
+        message: "Token tidak valid / kedaluwarsa"
+      }, {
+        headers: corsHeaders
+      });
+    }
+    // 3) Tentukan waktu kehadiran dengan penyesuaian timezone
+    let waktuKehadiran;
+    const serverTime = new Date();
+    if (timezoneOffset !== undefined && timezoneOffset !== null) {
+      // Adjust server time ke waktu lokal user
+      const adjustedTime = new Date(serverTime.getTime() + timezoneOffset * 60 * 1000);
+      waktuKehadiran = adjustedTime.toISOString();
+      console.log(`Waktu disesuaikan: Server=${serverTime.toISOString()}, Adjusted=${waktuKehadiran}, Offset=${timezoneOffset} menit`);
+    } else if (clientTime) {
+      // Validasi clientTime untuk memastikan format yang benar
+      try {
+        const clientDate = new Date(clientTime);
+        if (!isNaN(clientDate.getTime())) {
+          waktuKehadiran = clientDate.toISOString();
+          console.log(`Menggunakan waktu client: ${waktuKehadiran}`);
+        } else {
+          throw new Error("Invalid client time");
+        }
+      } catch (e) {
+        console.log("Client time invalid, fallback ke server time:", e);
+        waktuKehadiran = serverTime.toISOString();
+      }
+    } else {
+      // Fallback ke server time
+      waktuKehadiran = serverTime.toISOString();
+      console.log(`Menggunakan server time: ${waktuKehadiran}`);
+    }
+    // 4) Upsert kehadiran
+    const { data: existing, error: existErr } = await supabase.from("kehadiran").select("id").eq("user_id", matched.id).eq("pertemuan_id", pid).maybeSingle();
+    if (existErr) {
+      console.log("existErr:", existErr);
+      return Response.json({
+        success: false,
+        message: "DB error on attendance lookup",
+        details: existErr.details ?? existErr.message
+      }, {
+        status: 500,
+        headers: corsHeaders
+      });
+    }
+    let status = "inserted";
+    if (existing?.id) {
+      const { error: updErr } = await supabase.from("kehadiran").update({
+        isAttending: true,
+        waktu_kehadiran: waktuKehadiran
+      }).eq("id", existing.id);
+      if (updErr) {
+        console.log("updErr:", updErr);
+        return Response.json({
+          success: false,
+          message: "DB error on attendance update",
+          details: updErr.details ?? updErr.message
+        }, {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+      status = "updated";
+    } else {
+      const { error: insErr } = await supabase.from("kehadiran").insert({
+        user_id: matched.id,
+        pertemuan_id: pid,
+        isAttending: true,
+        waktu_kehadiran: waktuKehadiran
+      });
+      if (insErr) {
+        console.log("insErr:", insErr);
+        return Response.json({
+          success: false,
+          message: "DB error on attendance insert",
+          details: insErr.details ?? insErr.message
+        }, {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+      status = "inserted";
+    }
+    return Response.json({
+      success: true,
+      status,
+      user: matched,
+      waktu_kehadiran: waktuKehadiran // Kirim kembali untuk konfirmasi
+    }, {
+      headers: corsHeaders
+    });
+  } catch (e) {
+    console.log("Unhandled error:", e);
+    return Response.json({
+      success: false,
+      message: e instanceof Error ? e.message : "Error"
+    }, {
+      status: 500,
+      headers: corsHeaders
+    });
+  }
+});
+

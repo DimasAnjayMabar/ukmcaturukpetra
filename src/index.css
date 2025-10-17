@@ -41,4 +41,21 @@ body {
   font-family: 'spekk', sans-serif;
 }
 
+/* Tambahkan ke file CSS global Anda (index.css atau App.css) */
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
 
