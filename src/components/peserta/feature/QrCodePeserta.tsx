@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { supabase } from "../../../db_client/client";
-import { X } from "lucide-react";
 
 /**
  * Base32 decode (RFC 4648, no padding) -> Uint8Array
