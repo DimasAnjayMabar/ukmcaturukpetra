@@ -73,7 +73,7 @@ const RegisterPage: React.FC = () => {
       // 1. Cek username/email/nrp yang sudah terdaftar
       const { data: existingUsers, error: checkError } = await supabase
         .from('user_profile')
-        .select('username, email, nrp')
+        .select('name, email, nrp')
         .or(`email.eq.${formData.email},nrp.eq.${formData.nrp}`);
 
       if (checkError) throw checkError;
