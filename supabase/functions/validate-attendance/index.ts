@@ -125,11 +125,20 @@ Deno.serve(async (req) => {
     // Upsert kehadiran
     const { data: existing, error: existErr } = await supabase
       .from("kehadiran")
-      .select("id")
+      .select("id, isAttending")
       .eq("user_id", matched.id)
       .eq("pertemuan_id", pertemuanId)
       .maybeSingle();
     if (existErr) throw existErr;
+
+    if (existing?.isAttending) {
+      return Response.json({
+        success: true,
+        status: "updated",
+        user: matched,
+        message: "Peserta sudah tercatat hadir."
+      });
+    }
 
     const nowIso = new Date().toISOString();
     let status: "inserted" | "updated" = "inserted";
