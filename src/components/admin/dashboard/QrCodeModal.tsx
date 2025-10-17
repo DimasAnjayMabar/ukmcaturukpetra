@@ -23,10 +23,9 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 }) => {
   const [scanError, setScanError] = useState<string | null>(null);
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
-  const [snackbarUser, setSnackbarUser] = useState<
-    { name: string; nrp?: string } | undefined
-  >(undefined);
+
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isScanningPaused, setIsScanningPaused] = useState(false);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const containerId = "qr-admin-scanner";
@@ -48,9 +47,10 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
   const processDecoded = async (decodedText: string) => {
     // Jangan hentikan scanner, tetap aktif untuk scan berikutnya
-    if (isProcessing) return; // Prevent double processing
+    if (isProcessing || isScanningPaused) return; // Prevent double processing
     
     setIsProcessing(true);
+    setIsScanningPaused(true);
 
     try {
       // Dapatkan waktu lokal dan timezone offset dari client
@@ -87,16 +87,12 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
           ? "Kehadiran diperbarui"
           : "Berhasil";
 
-      // Tampilkan snackbar
-      setSnackbarUser(
-        data.user ? { name: data.user.name, nrp: data.user.nrp } : undefined
-      );
+
       setSnackbarMsg(`✅ ${statusText} - ${userName}${userNrp ? ` (${userNrp})` : ""}`);
 
       // Auto hide snackbar setelah 3 detik
       setTimeout(() => {
         setSnackbarMsg(null);
-        setSnackbarUser(undefined);
       }, 3000);
     } catch (err) {
       const msg =
@@ -109,6 +105,9 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       }, 3000);
     } finally {
       setIsProcessing(false);
+      setTimeout(() => {
+        setIsScanningPaused(false);
+      }, 2000); // Re-enable scanner after 2 seconds
     }
   };
 
@@ -117,8 +116,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       cleanup();
       setScanError(null);
       setSnackbarMsg(null);
-      setSnackbarUser(undefined);
       setIsProcessing(false);
+      setIsScanningPaused(false);
       return;
     }
 
@@ -126,8 +125,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     const start = async () => {
       setScanError(null);
       setSnackbarMsg(null);
-      setSnackbarUser(undefined);
       setIsProcessing(false);
+      setIsScanningPaused(false);
 
       try {
         // Pastikan container ada
@@ -148,7 +147,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
             // ignore scan failures
           }
         );
-      } catch (e) {
+      } catch {
         setScanError(
           "Tidak bisa mengakses kamera. Pastikan izin kamera diberikan."
         );
@@ -207,6 +206,11 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
                   <div className="mt-2 flex items-center gap-2 text-blue-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span className="text-sm">Memproses...</span>
+                  </div>
+                )}
+                {isScanningPaused && !isProcessing && (
+                  <div className="mt-2 flex items-center gap-2 text-gray-500">
+                    <span className="text-sm">Scanner dijeda...</span>
                   </div>
                 )}
               </div>
