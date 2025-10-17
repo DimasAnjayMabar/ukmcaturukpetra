@@ -159,7 +159,7 @@ return (
 <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute bottom-[10%] right-[0%] w-[22%] opacity-100" />
 <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute bottom-[-10%] right-[-6%] w-[18%] opacity-100" />
 <img src="/svg/blocks/block b m.svg" alt="Decoration" className="absolute bottom-[-5%] right-[15%] w-[14%] opacity-100" />
-<img src="/svg/blocks/block b main.svg" alt="Decoration" className="absolute bottom-[-20%] right-[5%] w-[15%]" />
+<img src="/svg/blocks/block-b-main.svg" alt="Decoration" className="absolute bottom-[-20%] right-[5%] w-[15%]" />
 </div>
 
 <div className="relative z-10 max-w-md w-full space-y-6 p-8">

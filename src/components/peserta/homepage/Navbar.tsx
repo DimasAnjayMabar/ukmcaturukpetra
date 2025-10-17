@@ -12,20 +12,27 @@ interface NavbarProps {
 }
 
 export default function Navbar({ className = '', isLoggedIn = false, userProfile, onNavigateToSection }: NavbarProps) {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrolled = window.scrollY > 50;
-      setIsScrolled(scrolled);
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsHidden(true);
+      } else {
+        setIsHidden(false);
+      }
+      setLastScrollY(currentScrollY);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', controlNavbar);
+    return () => window.removeEventListener('scroll', controlNavbar);
+  }, [lastScrollY]);
+
 
   const scrollToSection = (sectionId: string) => {
     if (onNavigateToSection) {
@@ -62,34 +69,28 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
     <>
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
-          isScrolled ? '-translate-y-full' : 'translate-y-0'
+          isHidden ? '-translate-y-full' : 'translate-y-0'
         } ${className}`}
       >
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-2 group z-10">
               <img
-                src="/svg/chess logo.svg"
+                src="/png/chess-logo.png"
                 alt="UKM Chess Logo"
-                className={`transition-all duration-200 group-hover:scale-105 ${
-                  isScrolled ? 'h-8 md:h-9' : 'h-8 md:h-10'
-                }`}
+                className={`transition-all duration-200 group-hover:scale-105 h-8 md:h-10`}
               />
-              {/* START: MODIFIED CODE */}
-              <div className={`font-groote tracking-tight flex items-center transition-all duration-200 ${
-                isScrolled ? 'text-xl md:text-xl' : 'text-xl md:text-2xl'
-              }`}>
-                <span className="font-bold bg-gradient-to-t from-[#0c1015] to-[#576281] bg-clip-text text-transparent">
+              <div className={`font-spekk tracking-tight flex items-center transition-all duration-200 text-xl md:text-2xl`}>
+                <span className="font-bold bg-gradient-to-t from-[#ffffff] to-[#ffffff] bg-clip-text text-transparent">
                   UKM
                 </span>
-                <span className="bg-gradient-to-t from-[#0c1015] via-[#8392ac] to-[#d6d2c4] bg-clip-text text-transparent mx-2">
+                <span className="bg-gradient-to-t from-yellow-500 via-yellow-500 to-yellow-500 bg-clip-text text-transparent mx-2">
                   |
                 </span>
-                <span className="bg-gradient-to-t from-[#0c1015] to-[#576281] bg-clip-text text-transparent">
-                  catur.
+                <span className="bg-gradient-to-t from-[#ffffff] to-[#ffffff] bg-clip-text text-transparent">
+                  CATUR
                 </span>
               </div>
-              {/* END: MODIFIED CODE */}
             </Link>
 
             <div className="hidden md:flex items-center space-x-4 z-10">
@@ -135,7 +136,6 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
               )}
             </div>
 
-            {/* Mobile View - Hanya tombol login/user profile */}
             <div className="md:hidden flex items-center">
               {isLoggedIn && userProfile ? (
                 <div className="relative">
@@ -178,7 +178,6 @@ export default function Navbar({ className = '', isLoggedIn = false, userProfile
         </div>
       </nav>
 
-      {/* Logout Confirmation Popup */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
