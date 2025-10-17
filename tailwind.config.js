@@ -9,6 +9,8 @@ export default {
         roxhead: ['Roxhead', 'sans-serif'],
         azedo: ['Azedo', 'sans-serif'],
         spekk: ['Spekk', 'sans-serif'],
+        buccane: ['Buccane', 'sans-serif'],
+        groote: ['Groote', 'sans-serif'],
       },
     },
   },
