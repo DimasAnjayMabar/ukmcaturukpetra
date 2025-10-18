@@ -96,7 +96,7 @@ const VerifyForgotPasswordPeserta: React.FC = () => {
             Forgot Password
           </h2>
           <p className="text-gray-600">
-            Email verifikasi terkirim. Harap klik link untuk mereset passwordnya
+            Email verifikasi terkirim ke email. Harap klik link untuk mereset passwordnya. Pastikan cek email yang terbaru ketika click resend email. Jika link verifikasi tidak muncul, click "show quoted text" atau "tampilkan kutipan teks"
           </p>
           
           <div className="pt-4">

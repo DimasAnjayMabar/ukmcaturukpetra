@@ -14,6 +14,7 @@ import {
   WifiOff,
   LogIn,
   LogOut,
+  Download,
 } from "lucide-react";
 import { Pertemuan, Kehadiran, TournamentMatch, RegistOut } from "../../../types";
 import { CheckInData } from "./CheckInData";
@@ -23,6 +24,7 @@ import { supabase } from "../../../db_client/client";
 import { ErrorModal } from "../../error_modal/ErrorModal";
 import { OpenRegistInScannerCamera } from "./OpenRegistInScannerCamera";
 import { OpenRegistOutScannerCamera } from "./OpenRegistOutScannerCamera";
+import * as XLSX from "xlsx";
 
 export const MeetingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -246,6 +248,73 @@ export const MeetingDetail: React.FC = () => {
       setRefreshing(false);
     }
   }, [id, meeting?.is_tournament, fetchTournamentMatches]);
+
+  // Export to Excel functions
+  const exportRegistInToExcel = useCallback(() => {
+    if (!meeting) return;
+
+    const data = meeting.attendees
+      .filter((a) => a.isAttending)
+      .map((attendee, index) => ({
+        No: index + 1,
+        Nama: users[attendee.user_id]?.name || "Unknown",
+        "User ID": attendee.user_id,
+        "Waktu Check In": attendee.waktu_kehadiran
+          ? new Date(attendee.waktu_kehadiran).toLocaleString("id-ID")
+          : "-",
+        Status: attendee.isAttending ? "Hadir" : "Tidak Hadir",
+      }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Regist In");
+
+    // Set column widths
+    const colWidths = [
+      { wch: 5 },  // No
+      { wch: 30 }, // Nama
+      { wch: 40 }, // User ID
+      { wch: 20 }, // Waktu Check In
+      { wch: 15 }, // Status
+    ];
+    ws["!cols"] = colWidths;
+
+    const fileName = `Regist_In_${meeting.judul_pertemuan}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }, [meeting, users]);
+
+  const exportRegistOutToExcel = useCallback(() => {
+    if (!meeting) return;
+
+    const data = meeting.registOutData
+      .filter((a) => a.isRegistedOut)
+      .map((registOut, index) => ({
+        No: index + 1,
+        Nama: users[registOut.user_id]?.name || "Unknown",
+        "User ID": registOut.user_id,
+        "Waktu Check Out": registOut.waktu_regist_out
+          ? new Date(registOut.waktu_regist_out).toLocaleString("id-ID")
+          : "-",
+        Status: registOut.isRegistedOut ? "Sudah Checkout" : "Belum Checkout",
+      }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Regist Out");
+
+    // Set column widths
+    const colWidths = [
+      { wch: 5 },  // No
+      { wch: 30 }, // Nama
+      { wch: 40 }, // User ID
+      { wch: 20 }, // Waktu Check Out
+      { wch: 15 }, // Status
+    ];
+    ws["!cols"] = colWidths;
+
+    const fileName = `Regist_Out_${meeting.judul_pertemuan}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }, [meeting, users]);
 
   // Realtime subscription untuk regist in
   useEffect(() => {
@@ -581,23 +650,39 @@ export const MeetingDetail: React.FC = () => {
         {(!meeting.is_tournament || activeTab === "attendance") && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Regist In Pane */}
-            <div className="bg-white rounded-xl shadow-lg">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl">
-                <div className="flex items-center justify-between">
+            <div className="bg-white rounded-xl shadow-lg flex flex-col" style={{ maxHeight: '600px' }}>
+              <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl flex-shrink-0">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <LogIn size={20} className="text-blue-600" />
                     <h3 className="text-lg font-bold text-gray-800">Regist In</h3>
                   </div>
-                  <button
-                    onClick={handleRegistIn}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                  >
-                    <QrCode size={16} />
-                    Scan QR
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={exportRegistInToExcel}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      disabled={registInCount === 0}
+                    >
+                      <Download size={16} />
+                      <span className="hidden sm:inline">Export to Excel</span>
+                    </button>
+                    <button
+                      onClick={handleRegistIn}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      <QrCode size={16} />
+                      Scan QR
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
+              <div 
+                className="p-6 flex-1" 
+                style={{ 
+                  overflowY: 'auto',
+                  overflowX: 'hidden'
+                }}
+              >
                 <CheckInData
                   attendees={meeting.attendees}
                   onScanQR={handleRegistIn}
@@ -608,23 +693,39 @@ export const MeetingDetail: React.FC = () => {
             </div>
 
             {/* Regist Out Pane */}
-            <div className="bg-white rounded-xl shadow-lg">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl">
-                <div className="flex items-center justify-between">
+            <div className="bg-white rounded-xl shadow-lg flex flex-col" style={{ maxHeight: '600px' }}>
+              <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl flex-shrink-0">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <LogOut size={20} className="text-orange-600" />
                     <h3 className="text-lg font-bold text-gray-800">Regist Out</h3>
                   </div>
-                  <button
-                    onClick={handleRegistOut}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
-                  >
-                    <QrCode size={16} />
-                    Scan QR
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={exportRegistOutToExcel}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      disabled={registOutCount === 0}
+                    >
+                      <Download size={16} />
+                      <span className="hidden sm:inline">Export to Excel</span>
+                    </button>
+                    <button
+                      onClick={handleRegistOut}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                    >
+                      <QrCode size={16} />
+                      Scan QR
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="p-6">
+              <div 
+                className="p-6 flex-1" 
+                style={{ 
+                  overflowY: 'auto',
+                  overflowX: 'hidden'
+                }}
+              >
                 <CheckOutData
                   attendees={meeting.registOutData}
                   onScanQR={handleRegistOut}

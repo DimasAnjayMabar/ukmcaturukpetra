@@ -92,7 +92,7 @@ const RegistrationSuccess: React.FC = () => {
             Pendaftaran Berhasil!
           </h2>
           <p className="text-gray-600">
-            Kami telah mengirimkan email verifikasi ke alamat email Anda. Silakan periksa inbox Anda dan klik tautan verifikasi untuk mengaktifkan akun Anda.
+            Kami telah mengirimkan email verifikasi ke alamat email Anda. Pastikan cek email yang terbaru ketika click resend email. Jika link verifikasi tidak muncul, click "show quoted text" atau "tampilkan kutipan teks"
           </p>
           
           <div className="pt-4">
