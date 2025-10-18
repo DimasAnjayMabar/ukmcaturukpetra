@@ -43,7 +43,7 @@ export const MeetingDetail: React.FC = () => {
     | null
   >(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
-  const [users, setUsers] = useState<{ [key: string]: { name: string } }>({});
+  const [users, setUsers] = useState<{ [key: string]: { name: string; nrp?: string } }>({});
   const [showRegistInScannerModal, setShowRegistInScannerModal] = useState(false);
   const [showRegistOutScannerModal, setShowRegistOutScannerModal] = useState(false);
 
@@ -64,16 +64,16 @@ export const MeetingDetail: React.FC = () => {
         if (missingUserIds.length > 0) {
           const { data: userData, error: userError } = await supabase
             .from("user_profile")
-            .select("id, name")
+            .select("id, name, nrp")
             .in("id", missingUserIds);
 
           if (userError) throw userError;
 
           newUsersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name };
+              acc[user.id] = { name: user.name, nrp: user.nrp };
               return acc;
-            }, {} as { [key: string]: { name: string } }) || {};
+            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
 
           setUsers((prevUsers) => ({ ...prevUsers, ...newUsersMap }));
         }
@@ -104,16 +104,16 @@ export const MeetingDetail: React.FC = () => {
         if (missingUserIds.length > 0) {
           const { data: userData, error: userError } = await supabase
             .from("user_profile")
-            .select("id, name")
+            .select("id, name, nrp")
             .in("id", missingUserIds);
 
           if (userError) throw userError;
 
           newUsersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name };
+              acc[user.id] = { name: user.name, nrp: user.nrp };
               return acc;
-            }, {} as { [key: string]: { name: string } }) || {};
+            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
 
           setUsers((prevUsers) => ({ ...prevUsers, ...newUsersMap }));
         }
@@ -195,16 +195,16 @@ export const MeetingDetail: React.FC = () => {
         if (missingPlayerIds.length > 0) {
           const { data: additionalUserData, error: additionalUserError } = await supabase
             .from("user_profile")
-            .select("id, name")
+            .select("id, name, nrp")
             .in("id", missingPlayerIds);
 
           if (additionalUserError) throw additionalUserError;
 
           additionalUsersMap =
             additionalUserData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name };
+              acc[user.id] = { name: user.name, nrp: user.nrp };
               return acc;
-            }, {} as { [key: string]: { name: string } }) || {};
+            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
 
           setUsers((prev) => ({ ...prev, ...additionalUsersMap }));
         }
@@ -258,7 +258,7 @@ export const MeetingDetail: React.FC = () => {
       .map((attendee, index) => ({
         No: index + 1,
         Nama: users[attendee.user_id]?.name || "Unknown",
-        "User ID": attendee.user_id,
+        NRP: users[attendee.user_id]?.nrp || "Unknown",
         "Waktu Check In": attendee.waktu_kehadiran
           ? new Date(attendee.waktu_kehadiran).toLocaleString("id-ID")
           : "-",
@@ -291,7 +291,7 @@ export const MeetingDetail: React.FC = () => {
       .map((registOut, index) => ({
         No: index + 1,
         Nama: users[registOut.user_id]?.name || "Unknown",
-        "User ID": registOut.user_id,
+        NRP: users[registOut.user_id]?.nrp || "Unknown",
         "Waktu Check Out": registOut.waktu_regist_out
           ? new Date(registOut.waktu_regist_out).toLocaleString("id-ID")
           : "-",
@@ -442,20 +442,20 @@ export const MeetingDetail: React.FC = () => {
         ];
         const uniqueUserIds = [...new Set(allUserIds)];
 
-        let usersMap: { [key: string]: { name: string } } = {};
+        let usersMap: { [key: string]: { name: string; nrp?: string } } = {};
         if (uniqueUserIds.length > 0) {
           const { data: userData, error: userError } = await supabase
             .from("user_profile")
-            .select("id, name")
+            .select("id, name, nrp")
             .in("id", uniqueUserIds);
 
           if (userError) throw userError;
 
           usersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name };
+              acc[user.id] = { name: user.name, nrp: user.nrp };
               return acc;
-            }, {} as { [key: string]: { name: string } }) || {};
+            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
         }
 
         setUsers(usersMap);
@@ -650,7 +650,7 @@ export const MeetingDetail: React.FC = () => {
         {(!meeting.is_tournament || activeTab === "attendance") && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Regist In Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col" style={{ maxHeight: '600px' }}>
+            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
               <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl flex-shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
@@ -664,7 +664,7 @@ export const MeetingDetail: React.FC = () => {
                       disabled={registInCount === 0}
                     >
                       <Download size={16} />
-                      <span className="hidden sm:inline">Export to Excel</span>
+                      <span className="hidden sm:inline">Export</span>
                     </button>
                     <button
                       onClick={handleRegistIn}
@@ -676,13 +676,7 @@ export const MeetingDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div 
-                className="p-6 flex-1" 
-                style={{ 
-                  overflowY: 'auto',
-                  overflowX: 'hidden'
-                }}
-              >
+              <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
                 <CheckInData
                   attendees={meeting.attendees}
                   onScanQR={handleRegistIn}
@@ -693,7 +687,7 @@ export const MeetingDetail: React.FC = () => {
             </div>
 
             {/* Regist Out Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col" style={{ maxHeight: '600px' }}>
+            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
               <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl flex-shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
@@ -707,7 +701,7 @@ export const MeetingDetail: React.FC = () => {
                       disabled={registOutCount === 0}
                     >
                       <Download size={16} />
-                      <span className="hidden sm:inline">Export to Excel</span>
+                      <span className="hidden sm:inline">Export</span>
                     </button>
                     <button
                       onClick={handleRegistOut}
@@ -719,13 +713,7 @@ export const MeetingDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div 
-                className="p-6 flex-1" 
-                style={{ 
-                  overflowY: 'auto',
-                  overflowX: 'hidden'
-                }}
-              >
+              <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
                 <CheckOutData
                   attendees={meeting.registOutData}
                   onScanQR={handleRegistOut}
