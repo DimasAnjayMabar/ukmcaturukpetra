@@ -41,6 +41,14 @@ export interface Kehadiran {
   waktu_kehadiran?: string;
 }
 
+export interface RegistOut {
+  id: string;
+  user_id: string;
+  pertemuan_id: string;
+  isRegistedOut: boolean;
+  waktu_regist_out?: string;
+}
+
 export type TournamentMatch = {
   id?: number; // Optional for new matches
   pertemuan_id: number;

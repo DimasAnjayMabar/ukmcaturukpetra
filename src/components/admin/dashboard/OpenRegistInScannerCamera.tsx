@@ -16,21 +16,31 @@ type ValidateResponse = {
   message?: string;
 };
 
-export const QRCodeModal: React.FC<QRCodeModalProps> = ({
+export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
   isOpen,
   onClose,
   pertemuanId,
 }) => {
   const [scanError, setScanError] = useState<string | null>(null);
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
-
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isScanningPaused, setIsScanningPaused] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const lastScannedRef = useRef<string>("");
+  const lastScanTimeRef = useRef<number>(0);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   const containerId = "qr-admin-scanner";
+  const SCAN_COOLDOWN = 3000; // 3 detik cooldown
+  const DUPLICATE_THRESHOLD = 5000; // 5 detik untuk menganggap QR yang sama sebagai duplikat
 
   const cleanup = async () => {
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+    
     try {
       if (html5QrCodeRef.current?.isScanning) {
         await html5QrCodeRef.current.stop();
@@ -45,12 +55,50 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     }
   };
 
+  const startCooldownTimer = () => {
+    setCooldownRemaining(SCAN_COOLDOWN / 1000);
+    
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current);
+    }
+    
+    cooldownTimerRef.current = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimerRef.current) {
+            clearInterval(cooldownTimerRef.current);
+            cooldownTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const processDecoded = async (decodedText: string) => {
-    // Jangan hentikan scanner, tetap aktif untuk scan berikutnya
-    if (isProcessing || isScanningPaused) return; // Prevent double processing
+    const now = Date.now();
+    
+    // Cek apakah sedang dalam cooldown
+    if (isProcessing || cooldownRemaining > 0) {
+      return;
+    }
+    
+    // Cek apakah ini duplikat scan yang sangat dekat waktunya
+    if (
+      lastScannedRef.current === decodedText &&
+      now - lastScanTimeRef.current < DUPLICATE_THRESHOLD
+    ) {
+      console.log("Duplikat scan diabaikan:", decodedText);
+      return;
+    }
+
+    // Update tracking
+    lastScannedRef.current = decodedText;
+    lastScanTimeRef.current = now;
     
     setIsProcessing(true);
-    setIsScanningPaused(true);
+    startCooldownTimer();
 
     try {
       // Dapatkan waktu lokal dan timezone offset dari client
@@ -87,7 +135,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
           ? "Kehadiran diperbarui"
           : "Berhasil";
 
-
       setSnackbarMsg(`✅ ${statusText} - ${userName}${userNrp ? ` (${userNrp})` : ""}`);
 
       // Auto hide snackbar setelah 3 detik
@@ -105,9 +152,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       }, 3000);
     } finally {
       setIsProcessing(false);
-      setTimeout(() => {
-        setIsScanningPaused(false);
-      }, 2000); // Re-enable scanner after 2 seconds
     }
   };
 
@@ -117,7 +161,9 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       setScanError(null);
       setSnackbarMsg(null);
       setIsProcessing(false);
-      setIsScanningPaused(false);
+      setCooldownRemaining(0);
+      lastScannedRef.current = "";
+      lastScanTimeRef.current = 0;
       return;
     }
 
@@ -126,7 +172,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       setScanError(null);
       setSnackbarMsg(null);
       setIsProcessing(false);
-      setIsScanningPaused(false);
+      setCooldownRemaining(0);
 
       try {
         // Pastikan container ada
@@ -169,7 +215,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Scan QR Peserta</h2>
+            <h2 className="text-lg font-semibold">Regist In Peserta</h2>
             <button
               onClick={() => {
                 onClose();
@@ -200,7 +246,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
                   className="rounded border border-gray-200 overflow-hidden"
                 />
                 <p className="mt-3 text-sm text-gray-500 text-center">
-                  Arahkan kamera ke QR dinamis milik peserta. Scanner akan terus aktif untuk scan berikutnya.
+                  Arahkan kamera ke QR dinamis milik peserta. Scanner akan dijeda otomatis setelah scan berhasil.
                 </p>
                 {isProcessing && (
                   <div className="mt-2 flex items-center gap-2 text-blue-600">
@@ -208,9 +254,18 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
                     <span className="text-sm">Memproses...</span>
                   </div>
                 )}
-                {isScanningPaused && !isProcessing && (
-                  <div className="mt-2 flex items-center gap-2 text-gray-500">
-                    <span className="text-sm">Scanner dijeda...</span>
+                {cooldownRemaining > 0 && !isProcessing && (
+                  <div className="mt-2 flex items-center gap-2 text-orange-600">
+                    <div className="h-4 w-4 rounded-full border-2 border-orange-600 border-t-transparent animate-spin" />
+                    <span className="text-sm font-medium">
+                      Scanner dijeda: {cooldownRemaining}s
+                    </span>
+                  </div>
+                )}
+                {cooldownRemaining === 0 && !isProcessing && (
+                  <div className="mt-2 flex items-center gap-2 text-green-600">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm">Scanner siap</span>
                   </div>
                 )}
               </div>

@@ -12,26 +12,29 @@ import {
   QrCode,
   Wifi,
   WifiOff,
+  LogIn,
+  LogOut,
 } from "lucide-react";
-import { Pertemuan, Kehadiran, TournamentMatch } from "../../../types";
-import { AttendanceData } from "./AttendanceData";
+import { Pertemuan, Kehadiran, TournamentMatch, RegistOut } from "../../../types";
+import { CheckInData } from "./CheckInData";
+import { CheckOutData } from "./CheckOutData";
 import { MatchRecap } from "./MatchRecap";
 import { supabase } from "../../../db_client/client";
 import { ErrorModal } from "../../error_modal/ErrorModal";
-// import { QRCodeModal } from "./QrCodeModal"; // old flow (disabled)
-import { QRCodeModal } from "./QrCodeModal"; // admin scanner modal
+import { OpenRegistInScannerCamera } from "./OpenRegistInScannerCamera";
+import { OpenRegistOutScannerCamera } from "./OpenRegistOutScannerCamera";
 
 export const MeetingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] =
-    useState<"attendance" | "matches">("attendance");
+  const [activeTab, setActiveTab] = useState<"attendance" | "matches">("attendance");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
   const [meeting, setMeeting] = useState<
     | (Pertemuan & {
         attendees: Kehadiran[];
+        registOutData: RegistOut[];
         matches: TournamentMatch[];
         is_tournament: boolean;
       })
@@ -39,11 +42,10 @@ export const MeetingDetail: React.FC = () => {
   >(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [users, setUsers] = useState<{ [key: string]: { name: string } }>({});
-  // const [showQRModal, setShowQRModal] = useState(false); // old flow
-  const [showScannerModal, setShowScannerModal] = useState(false); // new flow
+  const [showRegistInScannerModal, setShowRegistInScannerModal] = useState(false);
+  const [showRegistOutScannerModal, setShowRegistOutScannerModal] = useState(false);
 
-  // Fetch attendance data
-  const fetchAttendanceData = useCallback(
+  const fetchRegistInData = useCallback(
     async (meetingId: string) => {
       try {
         const { data: attendanceData, error: attendanceError } = await supabase
@@ -54,7 +56,6 @@ export const MeetingDetail: React.FC = () => {
         if (attendanceError) throw attendanceError;
 
         const userIds = attendanceData?.map((a) => a.user_id) || [];
-
         const missingUserIds = userIds.filter((userId) => !users[userId]);
         let newUsersMap: { [key: string]: { name: string } } = {};
 
@@ -77,19 +78,59 @@ export const MeetingDetail: React.FC = () => {
 
         return attendanceData || [];
       } catch (error) {
-        console.error("Error fetching attendance data:", error);
+        console.error("Error fetching regist in data:", error);
         return [];
       }
     },
     [users]
   );
 
-  const refreshAttendance = useCallback(async () => {
+  const fetchRegistOutData = useCallback(
+    async (meetingId: string) => {
+      try {
+        const { data: registOutData, error: registOutError } = await supabase
+          .from("regist_out")
+          .select("*")
+          .eq("pertemuan_id", meetingId);
+
+        if (registOutError) throw registOutError;
+
+        const userIds = registOutData?.map((a) => a.user_id) || [];
+        const missingUserIds = userIds.filter((userId) => !users[userId]);
+        let newUsersMap: { [key: string]: { name: string } } = {};
+
+        if (missingUserIds.length > 0) {
+          const { data: userData, error: userError } = await supabase
+            .from("user_profile")
+            .select("id, name")
+            .in("id", missingUserIds);
+
+          if (userError) throw userError;
+
+          newUsersMap =
+            userData?.reduce((acc, user) => {
+              acc[user.id] = { name: user.name };
+              return acc;
+            }, {} as { [key: string]: { name: string } }) || {};
+
+          setUsers((prevUsers) => ({ ...prevUsers, ...newUsersMap }));
+        }
+
+        return registOutData || [];
+      } catch (error) {
+        console.error("Error fetching regist out data:", error);
+        return [];
+      }
+    },
+    [users]
+  );
+
+  const refreshRegistInAttendance = useCallback(async () => {
     if (!id) return;
 
     try {
       setRefreshing(true);
-      const updatedAttendance = await fetchAttendanceData(id);
+      const updatedAttendance = await fetchRegistInData(id);
 
       setMeeting((prev) =>
         prev
@@ -104,9 +145,30 @@ export const MeetingDetail: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, [id, fetchAttendanceData]);
+  }, [id, fetchRegistInData]);
 
-  // Fetch matches
+  const refreshRegistOutAttendance = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      setRefreshing(true);
+      const updatedRegistOut = await fetchRegistOutData(id);
+
+      setMeeting((prev) =>
+        prev
+          ? {
+              ...prev,
+              registOutData: updatedRegistOut,
+            }
+          : null
+      );
+    } catch (error) {
+      console.error("Error refreshing regist out:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [id, fetchRegistOutData]);
+
   const fetchTournamentMatches = useCallback(
     async (meetingId: string) => {
       try {
@@ -129,10 +191,7 @@ export const MeetingDetail: React.FC = () => {
         let additionalUsersMap: { [key: string]: { name: string } } = {};
 
         if (missingPlayerIds.length > 0) {
-          const {
-            data: additionalUserData,
-            error: additionalUserError,
-          } = await supabase
+          const { data: additionalUserData, error: additionalUserError } = await supabase
             .from("user_profile")
             .select("id, name")
             .in("id", missingPlayerIds);
@@ -188,12 +247,12 @@ export const MeetingDetail: React.FC = () => {
     }
   }, [id, meeting?.is_tournament, fetchTournamentMatches]);
 
-  // Realtime attendance subscription
+  // Realtime subscription untuk regist in
   useEffect(() => {
     if (!id) return;
 
     const channel = supabase
-      .channel(`meeting_${id}_attendance`)
+      .channel(`meeting_${id}_regist_in`)
       .on(
         "postgres_changes",
         {
@@ -203,7 +262,7 @@ export const MeetingDetail: React.FC = () => {
           filter: `pertemuan_id=eq.${id}`,
         },
         () => {
-          refreshAttendance();
+          refreshRegistInAttendance();
         }
       )
       .subscribe((status) => {
@@ -216,9 +275,33 @@ export const MeetingDetail: React.FC = () => {
 
     return () => {
       supabase.removeChannel(channel);
-      setRealtimeConnected(false);
     };
-  }, [id, refreshAttendance]);
+  }, [id, refreshRegistInAttendance]);
+
+  // Realtime subscription untuk regist out
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`meeting_${id}_regist_out`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "regist_out",
+          filter: `pertemuan_id=eq.${id}`,
+        },
+        () => {
+          refreshRegistOutAttendance();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, refreshRegistOutAttendance]);
 
   // Realtime matches subscription
   useEffect(() => {
@@ -250,21 +333,12 @@ export const MeetingDetail: React.FC = () => {
       try {
         setLoading(true);
 
-        const {
-          data: { session },
-          error: authError,
-        } = await supabase.auth.getSession();
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
 
         if (!session || authError) {
           setIsUnauthorized(true);
           return;
         }
-
-        type UserMap = {
-          [key: string]: {
-            name: string;
-          };
-        };
 
         const { data: meetingData, error: meetingError } = await supabase
           .from("pertemuan")
@@ -276,6 +350,7 @@ export const MeetingDetail: React.FC = () => {
           throw meetingError || new Error("Meeting not found");
         }
 
+        // Fetch regist in data
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("kehadiran")
           .select("*")
@@ -283,80 +358,48 @@ export const MeetingDetail: React.FC = () => {
 
         if (attendanceError) throw attendanceError;
 
-        const userIds = attendanceData?.map((a) => a.user_id) || [];
+        // Fetch regist out data
+        const { data: registOutData, error: registOutError } = await supabase
+          .from("regist_out")
+          .select("*")
+          .eq("pertemuan_id", id);
 
-        let usersMap: UserMap = {};
-        if (userIds.length > 0) {
+        if (registOutError) throw registOutError;
+
+        // Combine all user IDs
+        const allUserIds = [
+          ...(attendanceData?.map((a) => a.user_id) || []),
+          ...(registOutData?.map((a) => a.user_id) || []),
+        ];
+        const uniqueUserIds = [...new Set(allUserIds)];
+
+        let usersMap: { [key: string]: { name: string } } = {};
+        if (uniqueUserIds.length > 0) {
           const { data: userData, error: userError } = await supabase
             .from("user_profile")
             .select("id, name")
-            .in("id", userIds);
+            .in("id", uniqueUserIds);
 
           if (userError) throw userError;
 
           usersMap =
-            userData?.reduce((acc: UserMap, user) => {
+            userData?.reduce((acc, user) => {
               acc[user.id] = { name: user.name };
               return acc;
-            }, {} as UserMap) || {};
+            }, {} as { [key: string]: { name: string } }) || {};
         }
 
         setUsers(usersMap);
 
         let matchesData: TournamentMatch[] = [];
         if (meetingData.is_tournament) {
-          const { data: tournamentData, error: tournamentError } = await supabase
-            .from("turnamen")
-            .select("*")
-            .eq("pertemuan_id", id)
-            .order("match_ke", { ascending: true });
-
-          if (tournamentError) throw tournamentError;
-
-          const allPlayerIds = [
-            ...new Set([
-              ...(tournamentData?.map((m) => m.pemain_1_id) || []),
-              ...(tournamentData?.map((m) => m.pemain_2_id) || []),
-            ]),
-          ];
-
-          const missingPlayerIds = allPlayerIds.filter((uid) => !usersMap[uid]);
-          let additionalUsersMap: { [key: string]: { name: string } } = {};
-
-          if (missingPlayerIds.length > 0) {
-            const {
-              data: additionalUserData,
-              error: additionalUserError,
-            } = await supabase
-              .from("user_profile")
-              .select("id, name")
-              .in("id", missingPlayerIds);
-
-            if (additionalUserError) throw additionalUserError;
-
-            additionalUsersMap =
-              additionalUserData?.reduce((acc, user) => {
-                acc[user.id] = { name: user.name };
-                return acc;
-              }, {} as UserMap) || {};
-          }
-
-          const allUsersMap = { ...usersMap, ...additionalUsersMap };
-          setUsers(allUsersMap);
-
-          matchesData =
-            tournamentData?.map((match) => ({
-              ...match,
-              pemain_1_name:
-                allUsersMap[match.pemain_1_id]?.name || "Unknown",
-              pemain_2_name:
-                allUsersMap[match.pemain_2_id]?.name || "Unknown",
-            })) || [];
+          matchesData = await fetchTournamentMatches(id);
         }
 
         setMeeting({
           ...meetingData,
           attendees: attendanceData || [],
+          registOutData: registOutData || [],
           matches: matchesData,
           is_tournament: meetingData.is_tournament,
         });
@@ -385,7 +428,10 @@ export const MeetingDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        Loading...
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -393,25 +439,25 @@ export const MeetingDetail: React.FC = () => {
   if (!meeting) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        Meeting not found
+        <p className="text-gray-600">Meeting not found</p>
       </div>
     );
   }
 
   const waktuPertemuan = `${meeting.waktu_mulai} - ${meeting.waktu_selesai}`;
-  const attendingCount = meeting.attendees.filter((a) => a.isAttending).length;
+  const registInCount = meeting.attendees.filter((a) => a.isAttending).length;
+  const registOutCount = meeting.registOutData.filter((a) => a.isRegistedOut).length;
 
   const handleBack = () => navigate(-1);
-  const handleScanQR = () => {
-    setShowScannerModal(true);
-  };
-
+  const handleRegistIn = () => setShowRegistInScannerModal(true);
+  const handleRegistOut = () => setShowRegistOutScannerModal(true);
   const handleUpdateAttendance = (userId: string, isPresent: boolean) => {
     console.log(`Update attendance for ${userId} to ${isPresent}`);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 py-4">
@@ -484,13 +530,10 @@ export const MeetingDetail: React.FC = () => {
             <div className="flex items-center text-gray-600">
               <Users size={20} className="mr-3 text-purple-500" />
               <div>
-                <p className="text-sm text-gray-500">Kehadiran</p>
+                <p className="text-sm text-gray-500">Total Peserta</p>
                 <p className="font-medium">
-                  <span className="text-green-600">{attendingCount}</span>
-                  <span className="text-gray-400">
-                    /{meeting.attendees.length}
-                  </span>{" "}
-                  hadir
+                  <span className="text-green-600">{registInCount}</span> masuk / 
+                  <span className="text-orange-600"> {registOutCount}</span> keluar
                 </p>
               </div>
             </div>
@@ -502,17 +545,8 @@ export const MeetingDetail: React.FC = () => {
           )}
         </div>
 
-        {/* New: Admin opens camera to scan participant */}
-        <button
-          onClick={handleScanQR}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mt-5 mb-5"
-        >
-          <QrCode size={20} />
-          Scan QR Peserta
-        </button>
-
-        {/* Tabs */}
-        {meeting.is_tournament ? (
+        {/* Tabs untuk Tournament */}
+        {meeting.is_tournament && (
           <div className="bg-white rounded-xl shadow-lg mb-8">
             <div className="border-b border-gray-200">
               <nav className="flex">
@@ -525,7 +559,7 @@ export const MeetingDetail: React.FC = () => {
                   }`}
                 >
                   <UserCheck size={18} />
-                  Data Kehadiran ({attendingCount})
+                  Data Kehadiran
                 </button>
                 <button
                   onClick={() => setActiveTab("matches")}
@@ -540,54 +574,99 @@ export const MeetingDetail: React.FC = () => {
                 </button>
               </nav>
             </div>
+          </div>
+        )}
 
-            <div className="p-6">
-              {activeTab === "attendance" ? (
-                <AttendanceData
+        {/* Dual Pane Layout untuk Attendance */}
+        {(!meeting.is_tournament || activeTab === "attendance") && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Regist In Pane */}
+            <div className="bg-white rounded-xl shadow-lg">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <LogIn size={20} className="text-blue-600" />
+                    <h3 className="text-lg font-bold text-gray-800">Regist In</h3>
+                  </div>
+                  <button
+                    onClick={handleRegistIn}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    <QrCode size={16} />
+                    Scan QR
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <CheckInData
                   attendees={meeting.attendees}
-                  onScanQR={handleScanQR}
+                  onScanQR={handleRegistIn}
                   onUpdateAttendance={handleUpdateAttendance}
                   users={users}
                 />
-              ) : (
-                <MatchRecap
-                  matches={meeting.matches}
+              </div>
+            </div>
+
+            {/* Regist Out Pane */}
+            <div className="bg-white rounded-xl shadow-lg">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <LogOut size={20} className="text-orange-600" />
+                    <h3 className="text-lg font-bold text-gray-800">Regist Out</h3>
+                  </div>
+                  <button
+                    onClick={handleRegistOut}
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
+                  >
+                    <QrCode size={16} />
+                    Scan QR
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <CheckOutData
+                  attendees={meeting.registOutData}
+                  onScanQR={handleRegistOut}
+                  onUpdateAttendance={handleUpdateAttendance}
                   users={users}
-                  attendees={meeting.attendees}
-                  id={Number(id)}
-                  onMatchAdded={refreshMatches}
                 />
-              )}
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-lg mb-8">
+        )}
+
+        {/* Match Recap untuk Tournament */}
+        {meeting.is_tournament && activeTab === "matches" && (
+          <div className="bg-white rounded-xl shadow-lg">
             <div className="p-6">
-              <AttendanceData
-                attendees={meeting.attendees}
-                onScanQR={handleScanQR}
-                onUpdateAttendance={handleUpdateAttendance}
+              <MatchRecap
+                matches={meeting.matches}
                 users={users}
+                attendees={meeting.attendees}
+                id={Number(id)}
+                onMatchAdded={refreshMatches}
               />
             </div>
           </div>
         )}
       </div>
 
-      {/* Old (removed): QRCodeModal for meeting */}
-      {/* <QRCodeModal
-        isOpen={showQRModal}
-        onClose={() => setShowQRModal(false)}
-        pertemuanId={id || ""}
-      /> */}
-
-      {/* New: Admin scanner modal */}
-      <QRCodeModal
-        isOpen={showScannerModal}
+      {/* Scanner Modals */}
+      <OpenRegistInScannerCamera
+        isOpen={showRegistInScannerModal}
         onClose={() => {
-          setShowScannerModal(false);
-          // after close, refresh attendance in case there were new scans
-          refreshAttendance();
+          setShowRegistInScannerModal(false);
+          refreshRegistInAttendance();
+        }}
+        pertemuanId={id || ""}
+      />
+
+      <OpenRegistOutScannerCamera
+        isOpen={showRegistOutScannerModal}
+        onClose={() => {
+          setShowRegistOutScannerModal(false);
+          refreshRegistOutAttendance();
         }}
         pertemuanId={id || ""}
       />

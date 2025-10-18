@@ -84,7 +84,7 @@ Deno.serve(async (req)=>{
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     // 1) Ensure pertemuan exists (avoid FK violation)
-    const { data: meeting, error: meetErr } = await supabase.from("pertemuan").select("id").eq("id", pid);
+    const { data: meeting, error: meetErr } = await supabase.from("pertemuan").select("id").eq("id", pid).maybeSingle();
     if (meetErr) {
       console.log("meetErr:", meetErr);
       return Response.json({
@@ -181,7 +181,7 @@ Deno.serve(async (req)=>{
       console.log(`Menggunakan server time: ${waktuKehadiran}`);
     }
     // 4) Upsert kehadiran
-    const { data: existing, error: existErr } = await supabase.from("kehadiran").select("id").eq("user_id", matched.id).eq("pertemuan_id", pid);
+    const { data: existing, error: existErr } = await supabase.from("regist_out").select("id").eq("user_id", matched.id).eq("pertemuan_id", pid);
     if (existErr) {
       console.log("existErr:", existErr);
       return Response.json({
@@ -195,7 +195,7 @@ Deno.serve(async (req)=>{
     }
     let status = "inserted";
     if (existing?.id) {
-      const { error: updErr } = await supabase.from("kehadiran").update({
+      const { error: updErr } = await supabase.from("regist_out").update({
         isAttending: true,
         waktu_kehadiran: waktuKehadiran
       }).eq("id", existing.id);
@@ -212,7 +212,7 @@ Deno.serve(async (req)=>{
       }
       status = "updated";
     } else {
-      const { error: insErr } = await supabase.from("kehadiran").insert({
+      const { error: insErr } = await supabase.from("regist_out").insert({
         user_id: matched.id,
         pertemuan_id: pid,
         isAttending: true,

@@ -14,7 +14,7 @@ interface AttendanceDataProps {
   }
 }
 
-export const AttendanceData: React.FC<AttendanceDataProps> = ({ 
+export const CheckInData: React.FC<AttendanceDataProps> = ({ 
   attendees, 
   onUpdateAttendance,
   users
@@ -26,9 +26,9 @@ export const AttendanceData: React.FC<AttendanceDataProps> = ({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-gray-800 mb-2">Data Kehadiran</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Data Regist In</h3>
           <p className="text-gray-600">
-            {presentCount} dari {totalCount} peserta hadir
+            {presentCount} dari {totalCount} peserta masuk
           </p>
         </div>
       </div>
@@ -72,7 +72,7 @@ export const AttendanceData: React.FC<AttendanceDataProps> = ({
       {attendees.length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <UserCheck size={48} className="mx-auto mb-4 text-gray-300" />
-          <p>Belum ada peserta terdaftar</p>
+          <p>Belum ada peserta masuk</p>
         </div>
       )}
     </div>
