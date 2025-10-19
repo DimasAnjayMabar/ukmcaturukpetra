@@ -59,3 +59,49 @@ body {
 }
 
 
+::-webkit-scrollbar {
+  display: none;
+}
+
+
+
+@layer utilities {
+  @keyframes scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes scroll-reverse {
+    from {
+      transform: translateX(-50%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .animate-scroll {
+    animation: scroll 60s linear infinite;
+  }
+
+  .animate-scroll-reverse {
+    animation: scroll-reverse 60s linear infinite;
+  }
+
+  @media (min-width: 768px) {
+    .animate-scroll {
+      animation-duration: 60s;
+    }
+    .animate-scroll-reverse {
+      animation-duration: 60s;
+    }
+  }
+
+  .group-hover\:pause:hover {
+    animation-play-state: paused;
+  }
+}

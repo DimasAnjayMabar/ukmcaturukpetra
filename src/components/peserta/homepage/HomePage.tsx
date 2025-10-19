@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
-import { Home, Calendar, Eye, Compass, Book, Volume2, VolumeX } from 'lucide-react';
+import { Home, Calendar, Eye, Compass, Book, Volume2, VolumeX, Image } from 'lucide-react';
 import Navbar from './Navbar';
 import ChessPiecesGuide from './ChessPieceGuide';
 import Timeline from './Timeline';
@@ -10,6 +10,7 @@ import { supabase } from '../../../db_client/client';
 import { UserProfile } from '../../../types/index';
 import Footer from './Footer';
 import Rulebook from './Rulebook';
+import Gallery from './Gallery';
 
 // const LazyKingScene = lazy(() => import('../models/KingScene'));
 
@@ -33,6 +34,7 @@ export default function HomePage() {
     { id: 'visi', label: 'Visi', icon: Eye },
     { id: 'misi', label: 'Misi', icon: Compass },
     { id: 'timeline', label: 'Timeline', icon: Calendar },
+    { id: 'gallery', label: 'Gallery', icon: Image },
     { id: 'rulebook', label: 'Rulebook', icon: Book}
   ];
 
@@ -226,7 +228,7 @@ export default function HomePage() {
 
             <div className="absolute top-0 left-0 w-full h-full bg-blue-900/20 -z-10" />
             
-            <div
+            {/* <div
               className="flex flex-col items-center z-10 [grid-area:1/1]"
               style={{
                 transform: `translateY(${scrollProgress * 20}px)`,
@@ -238,7 +240,7 @@ export default function HomePage() {
                 <span className="mx-4 text-yellow-500">|</span>
                 <span>CATUR</span>
               </div>
-            </div>
+            </div> */}
           </section>
 
           <div className="fixed bottom-5 right-5 z-40">
@@ -264,6 +266,9 @@ export default function HomePage() {
             </section>
             <section id="timeline" className="">
                 <Timeline />
+            </section>
+            <section id="gallery">
+                <Gallery/>
             </section>
             <section id="rulebook">
                 <Rulebook/>
