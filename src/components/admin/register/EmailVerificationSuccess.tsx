@@ -17,7 +17,6 @@ const EmailVerificationSuccess: React.FC = () => {
       try {
         setIsLoading(true);
   
-        // 🔹 Ambil session langsung dari Supabase
         const { data: sessionData, error } = await supabase.auth.getSession();
         if (error) throw error;
   
@@ -30,13 +29,12 @@ const EmailVerificationSuccess: React.FC = () => {
         const { error: updateError } = await supabase
           .from("user_profile")
           .update({ email_verified_at: new Date().toISOString() })
-          .eq("id", user.id); // atau .eq("email", user.email)
+          .eq("id", user.id); 
   
         if (updateError) {
           console.warn("Gagal update user_profile:", updateError.message);
         }
   
-        // 🔹 Tandai sukses & logout
         setIsVerified(true);
         await supabase.auth.signOut();
   

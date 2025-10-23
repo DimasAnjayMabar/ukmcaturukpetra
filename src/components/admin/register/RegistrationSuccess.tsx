@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { MailCheck, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../db_client/client';
 import { ErrorModal } from '../../error_modal/ErrorModal';
 
@@ -11,7 +10,11 @@ const RegistrationSuccess: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorType, setErrorType] = useState<'other' | undefined>();
   const [customMessage, setCustomMessage] = useState<string>('');
-  const navigate = useNavigate();
+
+  const backToLoginPage = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/admin/login'
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -113,7 +116,7 @@ const RegistrationSuccess: React.FC = () => {
 
           <div className="pt-6">
             <button
-              onClick={() => navigate('/admin/login')}
+              onClick={backToLoginPage}
               className="inline-flex items-center text-blue-600 hover:text-blue-500 font-medium"
             >
               Kembali ke halaman login <ArrowRight size={16} className="ml-1" />

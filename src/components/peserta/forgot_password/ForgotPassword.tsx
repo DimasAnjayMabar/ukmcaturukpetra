@@ -2,46 +2,59 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { supabase } from '../../../db_client/client';
+import { ErrorModal } from '../../error_modal/ErrorModal'; 
 
-const ForgotPasswordPeserta: React.FC = () => {
+const ForgotPassword: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [error, setError] = useState('');
-  // const [searchParams] = useSearchParams();
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
+
+  const backToLoginPage = async () => {
+    await supabase.auth.signOut()
+    window.location.href = '/peserta/login'
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (password !== confirmPassword) {
-      setError('Password tidak sama');
-      return;
-    }
 
     setIsLoading(true);
-    
     try {
-      // Update password (tidak perlu accessToken)
+      // Update password via Supabase
       const { error: updateError } = await supabase.auth.updateUser({
-        password: password
+        password: password,
       });
+
+      // Validasi kesamaan password
+      if (password !== confirmPassword) {
+        setErrorMessage('Password dan konfirmasi password tidak sama.');
+        setErrorModalOpen(true);
+        return;
+      }
 
       if (updateError) throw updateError;
 
       setIsSuccess(true);
-      localStorage.removeItem('email')
-      await supabase.auth.signOut()
+      localStorage.removeItem('email');
+      await supabase.auth.signOut();
       setTimeout(() => navigate('/peserta/login'), 3000);
     } catch (err) {
       console.error('Reset password error:', err);
-      setError('Gagal mengubah password. Silakan coba lagi.');
+
+      // Tangkap pesan asli dari Supabase jika ada
+      const supabaseMessage = err?.message || 'Gagal mengubah password. Silakan coba lagi.';
+
+      setErrorMessage(supabaseMessage);
+      setErrorModalOpen(true);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Jika sudah berhasil ubah password
   if (isSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -58,7 +71,7 @@ const ForgotPasswordPeserta: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
         <h1 className="text-2xl font-bold mb-6">Atur Ulang Password</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block mb-1">Password Baru</label>
@@ -71,7 +84,7 @@ const ForgotPasswordPeserta: React.FC = () => {
               minLength={6}
             />
           </div>
-          
+
           <div>
             <label className="block mb-1">Konfirmasi Password</label>
             <input
@@ -95,10 +108,28 @@ const ForgotPasswordPeserta: React.FC = () => {
               'Atur Password'
             )}
           </button>
+          <button
+            onClick={backToLoginPage}
+            className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isLoading ? (
+              <Loader2 className="animate-spin mx-auto" />
+            ) : (
+              'Kembali ke Login Page'
+            )}
+          </button>
         </form>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        customMessage={errorMessage}
+        errorType="other"
+      />
     </div>
   );
 };
 
-export default ForgotPasswordPeserta;
+export default ForgotPassword;

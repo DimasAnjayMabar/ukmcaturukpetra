@@ -5,7 +5,7 @@ import { supabase } from '../../../db_client/client';
 import { ErrorModal } from '../../error_modal/ErrorModal';
 
 const VerifyForgotPassword: React.FC = () => {
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,9 +47,8 @@ const VerifyForgotPassword: React.FC = () => {
         throw new Error(error.message);
       }
 
-      // 3. Start countdown and disable button
       setCanResend(false);
-      setCountdown(30);
+      setCountdown(60);
       
       const timer = setInterval(() => {
         setCountdown((prev) => {

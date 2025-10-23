@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../db_client/client';
 import { ErrorModal } from '../../error_modal/ErrorModal';
 
-const VerifyForgotPasswordPeserta: React.FC = () => {
-  const [countdown, setCountdown] = useState(30);
+const VerifyForgotPassword: React.FC = () => {
+  const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,7 +31,6 @@ const VerifyForgotPasswordPeserta: React.FC = () => {
   const handleResend = async () => {
     try {
       setIsLoading(true);
-      // 1. Get email from localStorage
       const email = localStorage.getItem('email');
       
       if (!email) {
@@ -47,9 +46,8 @@ const VerifyForgotPasswordPeserta: React.FC = () => {
         throw new Error(error.message);
       }
 
-      // 3. Start countdown and disable button
       setCanResend(false);
-      setCountdown(30);
+      setCountdown(60);
       
       const timer = setInterval(() => {
         setCountdown((prev) => {
@@ -96,7 +94,7 @@ const VerifyForgotPasswordPeserta: React.FC = () => {
             Forgot Password
           </h2>
           <p className="text-gray-600">
-            Email verifikasi terkirim ke email. Harap klik link untuk mereset passwordnya. Pastikan cek email yang terbaru ketika click resend email. Jika link verifikasi tidak muncul, click "show quoted text" atau "tampilkan kutipan teks"
+            Email verifikasi terkirim. Harap klik link untuk mereset passwordnya. Pastikan cek email yang terbaru ketika click resend email. Jika link verifikasi tidak muncul, click "show quoted text" atau "tampilkan kutipan teks"
           </p>
           
           <div className="pt-4">
@@ -136,4 +134,4 @@ const VerifyForgotPasswordPeserta: React.FC = () => {
   );
 };
 
-export default VerifyForgotPasswordPeserta;
+export default VerifyForgotPassword;
