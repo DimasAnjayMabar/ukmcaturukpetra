@@ -20,7 +20,6 @@ const pieceIconPaths: Record<PieceType, string> = {
   king: '/svg/icons/king icon.svg',
 };
 
-
 const initialPieces: Piece[] = [
   { id: 'w_rook_a1', type: 'rook' as PieceType, color: 'white' as PieceColor, pos: 'a1' },
   { id: 'w_knight_b1', type: 'knight' as PieceType, color: 'white' as PieceColor, pos: 'b1' },
@@ -141,7 +140,7 @@ export const AnimatedChessboard: React.FC<AnimatedChessboardProps> = ({ currentM
               Array.from({ length: 8 }).map((_, col) => (
                 <use
                   key={`tile-${row}-${col}`}
-                  href={(row + col) % 2 !== 0 ? '#light-tile' : '#dark-tile'}
+                  href={(row + col) % 2 !== 0 ? '#dark-tile' : '#light-tile'}
                   x={col * tileSize}
                   y={row * tileSize}
                 />
