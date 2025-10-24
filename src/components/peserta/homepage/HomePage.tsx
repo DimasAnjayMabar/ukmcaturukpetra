@@ -170,9 +170,12 @@ export default function HomePage() {
 
   const toggleMute = () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    const video = videoRef.current;
+
+    if (!audio || !video) return;
 
     if (!hasAudioPlayed) {
+      audio.currentTime = video.currentTime;
       audio.play().catch(e => console.error("Audio play failed:", e));
       setHasAudioPlayed(true);
     }
@@ -180,8 +183,30 @@ export default function HomePage() {
     const newMutedState = !isMuted;
     audio.muted = newMutedState;
     setIsMuted(newMutedState);
+
+    if (!newMutedState) {
+      // resync each time it’s unmuted
+      audio.currentTime = video.currentTime;
+    }
   };
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const fadeStart = 0.2;
+    const fadeEnd = 0.9;
+
+    if (scrollProgress < fadeStart) {
+      audio.volume = 1;
+    } else if (scrollProgress > fadeEnd) {
+      audio.volume = 0;
+    } else {
+      const fadeRange = fadeEnd - fadeStart;
+      const fadeProgress = (scrollProgress - fadeStart) / fadeRange;
+      audio.volume = 1 - fadeProgress;
+    }
+  }, [scrollProgress]);
 
   if (isLoading) {
     return (
@@ -243,17 +268,17 @@ export default function HomePage() {
             </div> */}
           </section>
 
-          <div className="fixed bottom-5 right-5 z-40">
-            <button
-              onClick={toggleMute}
-              className="p-3 bg-[#141413] rounded-full text-yellow-500 hover:bg-yellow-500 hover:text-[#141413] transition-colors backdrop-blur-sm"
-              aria-label={isMuted ? 'Unmute music' : 'Mute music'}
-            >
-              {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
-            </button>
+          <div className="h-screen relative">
+            <div className="absolute bottom-5 right-5 z-40" >
+              <button
+                onClick={toggleMute}
+                className="p-3 bg-[#141413] rounded-full text-yellow-500 hover:bg-yellow-500 hover:text-[#141413] transition-colors backdrop-blur-sm"
+                aria-label={isMuted ? 'Unmute music' : 'Mute music'}
+              >
+                {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+              </button>
+            </div>
           </div>
-
-          <div className="h-screen"></div>
           <div className="relative z-10 bg-gradient-to-b from-[#0d0d0e] via-[#0d0d0e] to-[#1d1d24] text-white">
             <div className="relative">
               <ChessPiecesGuide />
