@@ -25,9 +25,7 @@ export default function HomePage() {
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isMuted, setIsMuted] = useState(true);
-  const [hasAudioPlayed, setHasAudioPlayed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   const sections = [
     { id: 'hero', label: 'Home', icon: Home },
@@ -168,45 +166,67 @@ export default function HomePage() {
     scrollToSection(sectionId);
   }, [scrollToSection]);
 
+  const fadeAudio = (
+    video: HTMLVideoElement,
+    targetVolume: number,
+    duration = 500
+  ) => {
+    const startVolume = video.volume;
+    const volumeChange = targetVolume - startVolume;
+    const stepTime = 50; // ms between steps
+    const steps = Math.ceil(duration / stepTime);
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+      video.volume = startVolume + volumeChange * progress;
+
+      if (currentStep >= steps) {
+        video.volume = targetVolume;
+        clearInterval(interval);
+      }
+    }, stepTime);
+  };
+
   const toggleMute = () => {
-    const audio = audioRef.current;
     const video = videoRef.current;
+    if (!video) return;
 
-    if (!audio || !video) return;
-
-    if (!hasAudioPlayed) {
-      audio.currentTime = video.currentTime;
-      audio.play().catch(e => console.error("Audio play failed:", e));
-      setHasAudioPlayed(true);
-    }
-    
     const newMutedState = !isMuted;
-    audio.muted = newMutedState;
     setIsMuted(newMutedState);
 
-    if (!newMutedState) {
-      // resync each time it’s unmuted
-      audio.currentTime = video.currentTime;
+    if (newMutedState) {
+      fadeAudio(video, 0, 400);
+      setTimeout(() => {
+        video.muted = true;
+      }, 400);
+    } else {
+      video.muted = false;
+      video.volume = 0;
+      video.play().catch((e) => console.error("Video play failed:", e));
+      fadeAudio(video, 1, 500);
     }
   };
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const video = videoRef.current;
+    if (!video) return;
 
     const fadeStart = 0.2;
     const fadeEnd = 0.9;
 
     if (scrollProgress < fadeStart) {
-      audio.volume = 1;
+      video.volume = 1;
     } else if (scrollProgress > fadeEnd) {
-      audio.volume = 0;
+      video.volume = 0;
     } else {
       const fadeRange = fadeEnd - fadeStart;
       const fadeProgress = (scrollProgress - fadeStart) / fadeRange;
-      audio.volume = 1 - fadeProgress;
+      video.volume = 1 - fadeProgress;
     }
   }, [scrollProgress]);
+
 
   if (isLoading) {
     return (
@@ -218,12 +238,11 @@ export default function HomePage() {
 
   return (
     <main className="relative bg-[#1d1d24]">
-      <audio ref={audioRef} src="/audio/homepage-bg-music.wav" loop muted />
-
       <Navbar 
         isLoggedIn={isLoggedIn} 
         userProfile={userProfile} 
         onNavigateToSection={handleNavigateToSection}
+        isPesertaFeaturesPage={isLoggedIn && !!userProfile}
       />
     
       {isLoggedIn && userProfile ? (

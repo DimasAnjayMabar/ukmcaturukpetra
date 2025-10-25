@@ -79,8 +79,9 @@ export default function Navbar({
             </Link>
 
             {/* desktop navlinks */}
-            {!isPesertaFeaturesPage && (
+            {!isLoggedIn && !isPesertaFeaturesPage && (
               <div className="relative hidden md:flex items-center justify-center flex-1 mx-32 py-4">
+
                 <div className="flex items-center justify-center w-full">
                   <button
                     onClick={() => scrollToSection('visi')}
