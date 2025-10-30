@@ -13,14 +13,23 @@ interface AttendanceRecord {
   meetingTitle: string;
 }
 
+interface RegistOutRecord {
+  id: string;
+  date: string;
+  time: string;
+  location: string;
+  status: 'Sudah Keluar' | 'Belum Keluar';
+  meetingTitle: string;
+}
+
 const AttendanceList: React.FC = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [registOutRecords, setRegistOutRecords] = useState<RegistOutRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<'regist-in' | 'regist-out'>('regist-in');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -53,7 +62,7 @@ const AttendanceList: React.FC = () => {
     return timeString;
   };
 
-  const transformAttendanceRecord = (record: any) => {
+  const transformAttendanceRecord = (record: any): AttendanceRecord => {
     const pertemuan = record.pertemuan;
     const dateObj = new Date(pertemuan.tanggal);
     const formattedDate = dateObj.toLocaleDateString('id-ID', {
@@ -63,6 +72,26 @@ const AttendanceList: React.FC = () => {
     const endTime = pertemuan.waktu_selesai ? formatSupabaseTime(pertemuan.waktu_selesai) : '-';
     const timeRange = startTime !== '-' && endTime !== '-' ? `${startTime} - ${endTime}` : '-';
     const status: 'Hadir' | 'Tidak Hadir' = record.isAttending ? 'Hadir' : 'Tidak Hadir';
+    return {
+      id: pertemuan.id.toString(),
+      date: formattedDate,
+      time: timeRange,
+      location: pertemuan.lokasi,
+      status,
+      meetingTitle: pertemuan.judul_pertemuan || 'Pertemuan'
+    };
+  };
+  
+  const transformRegistOutRecord = (record: any): RegistOutRecord => {
+    const pertemuan = record.pertemuan;
+    const dateObj = new Date(pertemuan.tanggal);
+    const formattedDate = dateObj.toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'short', year: 'numeric'
+    });
+    const startTime = pertemuan.waktu_mulai ? formatSupabaseTime(pertemuan.waktu_mulai) : '-';
+    const endTime = pertemuan.waktu_selesai ? formatSupabaseTime(pertemuan.waktu_selesai) : '-';
+    const timeRange = startTime !== '-' && endTime !== '-' ? `${startTime} - ${endTime}` : '-';
+    const status: 'Sudah Keluar' | 'Belum Keluar' = record.isRegistedOut ? 'Sudah Keluar' : 'Belum Keluar';
     return {
       id: pertemuan.id.toString(),
       date: formattedDate,
@@ -82,7 +111,20 @@ const AttendanceList: React.FC = () => {
       if (error) throw error;
       setAttendanceRecords(data.map(transformAttendanceRecord));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      throw err;
+    }
+  };
+
+  const fetchRegistOutData = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('regist_out')
+        .select('isRegistedOut, pertemuan(id, tanggal, waktu_mulai, waktu_selesai, lokasi, judul_pertemuan)')
+        .eq('user_id', userId);
+      if (error) throw error;
+      setRegistOutRecords(data.map(transformRegistOutRecord));
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -92,12 +134,29 @@ const AttendanceList: React.FC = () => {
         setLoading(true);
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('No active session found');
-        await fetchAttendanceData(session.user.id);
+        
+        // fetch both sets of data in parallel
+        await Promise.all([
+          fetchAttendanceData(session.user.id),
+          fetchRegistOutData(session.user.id)
+        ]);
+
         const channel = supabase
-          .channel('attendance-changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'kehadiran', filter: `user_id=eq.${session.user.id}` }, () => fetchAttendanceData(session.user.id))
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'pertemuan' }, () => fetchAttendanceData(session.user.id))
+          .channel('user-attendance-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kehadiran', filter: `user_id=eq.${session.user.id}` }, 
+            () => fetchAttendanceData(session.user.id)
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'regist_out', filter: `user_id=eq.${session.user.id}` }, // Added listener for regist_out
+            () => fetchRegistOutData(session.user.id)
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'pertemuan' }, 
+            () => {
+              fetchAttendanceData(session.user.id);
+              fetchRegistOutData(session.user.id);
+            }
+          )
           .subscribe((status) => setIsOnline(status === 'SUBSCRIBED'));
+          
         channelRef.current = channel;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -109,8 +168,16 @@ const AttendanceList: React.FC = () => {
     return () => { channelRef.current?.unsubscribe(); };
   }, []);
   
-  const getStatusColor = (status: string) => {
-    return status === 'Hadir' ? 'bg-green-900/30 text-green-300' : 'bg-red-900/30 text-red-300';
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'Hadir':
+      case 'Sudah Keluar':
+        return 'bg-green-900/30 text-green-300 border-green-500/30';
+      case 'Tidak Hadir':
+      case 'Belum Keluar':
+      default:
+        return 'bg-red-900/30 text-red-300 border-red-500/30';
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100">Loading...</div>;
@@ -118,7 +185,7 @@ const AttendanceList: React.FC = () => {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-gradient-to-t from-[#47618a] to-[#E3E1DA]">
-      <div className="absolute -bottom-20 md:-bottom-50 left-1/2 -translate-x-1/2 w-1/2 lg:w-1/2 h-1/2 z-20 pointer-events-none lg:left-0 lg:h-full lg:-translate-x-0 lg:bottom-0 lg:z-0 flex items-end justify-center">
+      <div className="absolute -bottom-20 md:-bottom-80 lg:-bottom-0 left-1/2 -translate-x-1/2 w-1/2 lg:w-1/2 h-1/2 z-20 pointer-events-none lg:left-0 lg:h-full lg:-translate-x-0 lg:z-0 flex items-end justify-center">
         <img 
           src="/svg/blocks/book.svg" 
           alt="Kehadiran Pillar" 
@@ -141,7 +208,6 @@ const AttendanceList: React.FC = () => {
               
               <div className="flex items-center justify-between mb-6 flex-shrink-0">
                 <h2 className="text-2xl lg:text-3xl font-bold text-[#DADBD3] flex items-center gap-3">
-                  {/* <BookOpen className="text-[#FFD700]" /> */}
                   ATTENDANCE LIST
                 </h2>
                 <div className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full backdrop-blur-md ${
@@ -154,6 +220,30 @@ const AttendanceList: React.FC = () => {
                 </div>
               </div>
               
+              <div className="grid grid-cols-2 border-b border-[#363E53]/30 flex-shrink-0 w-full">
+                <button
+                  onClick={() => setActiveTab('regist-in')}
+                  className={`py-3 font-medium text-sm transition-all duration-300 ease-out text-center w-full border-b-2 ${
+
+                    activeTab === 'regist-in'
+                      ? 'text-[#FFD700] border-[#FFD700] bg-[#363E53]/20'
+                      : 'text-[#DADBD3]/60 border-transparent hover:text-[#DADBD3]'
+                  }`}
+                >
+                  Regist In
+                </button>
+                <button
+                  onClick={() => setActiveTab('regist-out')}
+                  className={`py-3 font-medium text-sm transition-all text-center w-full border-b-2 ${
+                    activeTab === 'regist-out'
+                      ? 'text-[#FFD700] border-[#FFD700] bg-[#363E53]/20'
+                      : 'text-[#DADBD3]/60 border-transparent hover:text-[#DADBD3]'
+                  }`}
+                >
+                  Regist Out
+                </button>
+              </div>
+
               <div className="overflow-y-auto min-h-0 rounded-2xl bg-[#0a0b0f]/50 border border-[#363E53]/30">
                 <table className="min-w-full">
                   <thead className="bg-[#363E53]/20 sticky top-0 backdrop-blur-md">
@@ -166,30 +256,61 @@ const AttendanceList: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#363E53]/20">
-                    {attendanceRecords.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-[#DADBD3]/60">
-                          <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                          No attendance data.
-                        </td>
-                      </tr>
-                    ) : (
-                      attendanceRecords.map((record) => (
-                        <tr key={record.id} className="hover:bg-[#363E53]/20 transition-colors duration-200">
-                          <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-[#DADBD3]">{record.meetingTitle}</td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.date}</td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.time}</td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.location}</td>
-                          <td className="whitespace-nowrap px-6 py-4 text-sm">
-                            <span className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold leading-5 border ${getStatusColor(record.status)} ${
-                              record.status === 'Hadir' ? 'border-green-500/30' : 'border-red-500/30'
-                            }`}>
-                              {record.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                    
+                    {activeTab === 'regist-in' && (
+                      <>
+                        {attendanceRecords.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-[#DADBD3]/60">
+                              <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                              No attendance data.
+                            </td>
+                          </tr>
+                        ) : (
+                          attendanceRecords.map((record) => (
+                            <tr key={record.id} className="hover:bg-[#363E53]/20 transition-colors duration-200">
+                              <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-[#DADBD3]">{record.meetingTitle}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.date}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.time}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.location}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                <span className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold leading-5 border ${getStatusStyle(record.status)}`}>
+                                  {record.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </>
                     )}
+                    
+                    {activeTab === 'regist-out' && (
+                      <>
+                        {registOutRecords.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-[#DADBD3]/60">
+                              <BookOpen className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                              No regist-out data.
+                            </td>
+                          </tr>
+                        ) : (
+                          registOutRecords.map((record) => (
+                            <tr key={record.id} className="hover:bg-[#363E53]/20 transition-colors duration-200">
+                              <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-[#DADBD3]">{record.meetingTitle}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.date}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.time}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm text-[#DADBD3]/80">{record.location}</td>
+                              <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                <span className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold leading-5 border ${getStatusStyle(record.status)}`}>
+                                  {record.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </>
+                    )}
+                    
                   </tbody>
                 </table>
               </div>
