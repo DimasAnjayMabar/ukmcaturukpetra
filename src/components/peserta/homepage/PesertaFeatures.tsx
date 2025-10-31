@@ -159,12 +159,12 @@ const PesertaFeatures: React.FC<PesertaFeaturesProps> = ({ userProfile }) => {
       {isQrModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="relative w-full max-w-md">
-            <div className="bg-white rounded-xl shadow-2xl">
+            <div className="rounded-xl shadow-2xl">
               <button
                 onClick={() => setIsQrModalOpen(false)}
-                className="absolute -top-3 -right-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10 border border-gray-200 transition-colors"
+                className="absolute -top-3 -right-3 bg-gradient-to-t from-[#080B16] via-[#334179] to-[#334179] text-white hover:opacity-90 rounded-full p-2 shadow-lg z-10 border-0 focus:outline-none focus:ring-0"
               >
-                <X size={18} className="text-gray-600" />
+                <X size={18} />
               </button>
               
               <QrCodePeserta 

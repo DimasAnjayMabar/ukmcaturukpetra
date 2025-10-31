@@ -145,8 +145,8 @@ export default function Navbar({
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center space-x-3 px-4 py-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors duration-200"
                   >
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
+                    <div className="w-8 h-8 bg-gradient-to-tr from-[#6583b4] to-[#E3E1DA] rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-[#fefeff]" />
                     </div>
                     <div className="text-left">
                       <p className="font-medium text-gray-900 text-sm">{userProfile.name}</p>

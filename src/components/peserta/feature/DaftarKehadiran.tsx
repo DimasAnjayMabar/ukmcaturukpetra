@@ -180,7 +180,7 @@ const AttendanceList: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100">Loading...</div>;
+  // if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-100">Loading...</div>;
   if (error) return <div className="flex items-center justify-center min-h-screen bg-red-50 text-red-600">{error}</div>;
 
   return (

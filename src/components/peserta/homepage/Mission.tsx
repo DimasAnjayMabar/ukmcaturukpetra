@@ -121,11 +121,11 @@ export default function OurMission() {
         </div>
         <div className="absolute inset-0 grid grid-rows-2 md:grid-rows-2">
             <div className="bg-gradient-to-r from-[#8392ac] to-[#EDE8D9] md:row-span-1 row-span-1"></div>
-            <div className="bg-gradient-to-t  from-[#0c1015] to-[#576281] md:row-span-1 row-span-1"></div>
+            <div className="bg-gradient-to-t from-[#0a0007] via-[#0f1028] to-[#576281] md:row-span-1 row-span-1"></div> 
         </div>
         <div className="absolute inset-0 md:hidden">
           <div className="h-[35%] bg-gradient-to-r from-[#8392ac] to-[#EDE8D9]"></div>
-          <div className="h-[65%] bg-gradient-to-t from-[#0c1015] to-[#576281]"></div>
+          <div className="h-[65%] bg-gradient-to-t from-[#0a0007] via-[#0f1028] to-[#576281]"></div>
         </div>
         
         {decorativePieces.map((dp, index) => (

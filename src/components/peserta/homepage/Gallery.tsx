@@ -60,6 +60,8 @@ export default function Gallery() {
                       src={src}
                       alt={`Image from ${event.name}`}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
 
                     <div className="absolute top-0 left-0 w-full h-full bg-blue-900/20" />

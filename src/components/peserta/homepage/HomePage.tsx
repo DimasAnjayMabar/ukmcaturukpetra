@@ -228,13 +228,13 @@ export default function HomePage() {
   }, [scrollProgress]);
 
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0d0d0e] via-[#0d0d0e] to-[#1d1d24]">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0d0d0e] via-[#0d0d0e] to-[#1d1d24]">
+  //       <div className="text-white">Loading...</div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <main className="relative bg-[#1d1d24]">

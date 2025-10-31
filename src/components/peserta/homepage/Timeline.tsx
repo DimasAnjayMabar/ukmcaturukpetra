@@ -55,7 +55,7 @@ const Timeline: React.FC = () => {
     const handleStepClick = (index: number) => setCurrentStep(index + 1);
 
     return (
-        <div className="relative w-full bg-[#0c1015] min-h-screen flex flex-col justify-center py-12 sm:py-16">
+        <div className="relative w-full bg-gradient-to-b from-[#0a0007] to-[#0f1028] min-h-screen flex flex-col justify-center py-12 sm:py-16">
             
                 
                 {/* desktop navigation */}

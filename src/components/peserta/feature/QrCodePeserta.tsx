@@ -176,72 +176,78 @@ const QrCodePeserta: React.FC<QrCodePesertaProps> = ({ isOpen, onClose, isMobile
 
  if (loading) {
     return (
-      <div className="w-full flex flex-col items-center justify-center p-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-2"></div>
-        <p className="text-center text-gray-600 text-sm">Memuat QR Code...</p>
+      <div className="w-full rounded-md bg-gradient-to-r from-[#0c1015] to-[#2B3044] flex flex-col items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mb-2"></div>
+        <p className="text-center text-sky-50 text-sm">Loading QR Code...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full p-4">
-        <p className="text-center text-red-600 text-sm mb-4">{error}</p>
+      <div className="bg-gradient-to-r from-[#0c1015] to-[#2B3044] w-full rounded-md">
+        <div className="p-4">
+          <p className="text-center text-red-600 text-sm">{error}</p>
+        </div>
         <button
           onClick={onClose}
-          className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+          className="w-full py-2 bg-gradient-to-r from-[#080B16] via-[#334179] to-[#B1C2D8] text-white hover:opacity-90 rounded-b-md transition-colors text-sm"
         >
-          Tutup
+          Close
         </button>
       </div>
     );
   }
 
   return (
-    <div className="w-full">
-      <h2 className={`font-semibold text-gray-900 text-center mb-1 ${isMobile ? 'text-lg' : 'text-xl'}`}>
-        QR Dinamis Kehadiran
-      </h2>
-      <p className={`text-gray-600 text-center mb-4 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-        Tunjukkan QR ini ke panitia. Kode berubah tiap 30 detik.
-      </p>
+  <div className="bg-gradient-to-t from-[#0c1015] to-[#2B3044] w-full rounded-md overflow-hidden">
+    <div className="py-8 px-6">
+      <div className="mb-6">
+        <h2 className={`font-semibold text-sky-50 text-center mb-1 ${isMobile ? 'text-lg' : 'text-xl'}`}>
+          Attendance Code
+        </h2>
+        <p className={`text-sky-100 text-center mb-4 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+          Show this QR to your committees.
+        </p>
+      </div>
 
       <div className="flex justify-center mb-4">
         <div className="p-2 bg-white rounded-lg border border-gray-200">
           <QRCode 
             value={qrValue || "-"} 
-            size={isMobile ? 160 : 220} 
+            size={isMobile ? 240 : 220} 
             level="H" 
           />
         </div>
       </div>
 
       <div className="text-center mb-4">
-        <p className={`font-mono tracking-widest ${isMobile ? 'text-xl' : 'text-2xl'} mb-2`}>
+        <p className={`text-sky-50 font-mono tracking-widest ${isMobile ? 'text-xl' : 'text-2xl'} mb-2`}>
           {token || "------"}
         </p>
-        <div className="w-full bg-gray-200 rounded-full h-1.5 mx-auto max-w-xs">
+        <div className="w-full bg-[#080B16] rounded-full h-1.5 mx-auto max-w-xs">
           <div 
-            className="bg-blue-500 h-1.5 rounded-full transition-all duration-1000"
+            className="bg-gradient-to-r from-[#334179] to-[#B1C2D8] h-1.5 rounded-full transition-all duration-1000"
             style={{ width: `${(remaining / stepSec) * 100}%` }}
           ></div>
         </div>
-        <p className={`text-gray-500 mt-1 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-          Refresh dalam {remaining}s
+        <p className={`text-sky-50 mt-2 ${isMobile ? 'text-xs' : 'text-sm'}`}>
+          Refreshes in {remaining}s
         </p>
       </div>
 
-      <div className="rounded-lg bg-blue-50 p-3 mb-4">
+      {/* <div className="rounded-lg bg-blue-50 p-3 mb-4">
         <p className={`text-center text-blue-700 ${isMobile ? 'text-xs' : 'text-sm'}`}>
           Privasi aman: kode hanya valid singkat. Screenshot akan cepat kedaluwarsa.
         </p>
-      </div>
+      </div> */}
 
+    </div> 
       <button
         onClick={onClose}
-        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
+        className="w-full py-2 bg-gradient-to-r from-[#080B16] via-[#334179] to-[#B1C2D8] text-white hover:opacity-90 rounded-b-md transition-colors text-sm"
       >
-        Tutup
+        Close
       </button>
     </div>
   );

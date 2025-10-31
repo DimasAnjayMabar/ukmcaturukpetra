@@ -3,7 +3,7 @@ import { Download } from 'lucide-react';
 
 export default function Rulebook() {
   return (
-    <section id="rulebook" className="bg-[#0c1015] py-12">
+    <section id="rulebook" className="bg-gradient-to-b from-[#0a0007] to-[#0f1028] py-12">
       <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-center gap-8">
         <h2 className="text-2xl md:text-3xl font-bold text-center sm:text-left text-gray-100 uppercase tracking-wider">
           Download Our Rulebook!
