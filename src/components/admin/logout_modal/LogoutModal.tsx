@@ -16,16 +16,25 @@ export const LogoutModal: React.FC<LogoutModalProps> = ({ onClose, isOpen }) => 
   const handleLogout = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const { error: logoutError } = await supabase.auth.signOut();
-      
-      if (logoutError) {
-        throw logoutError;
+      // Pastikan session valid dulu
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        console.warn('No active session found — forcing local sign-out');
+        // Bersihkan cache lokal saja (tanpa panggil server)
+        await supabase.auth.signOut({ scope: 'local' });
+        navigate('/admin/login');
+        return;
       }
-      
-      navigate('/admin/login')
-      
+
+      // Kalau session valid, lanjut signOut normal
+      const { error: logoutError } = await supabase.auth.signOut();
+
+      if (logoutError) throw logoutError;
+
+      navigate('/admin/login');
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
