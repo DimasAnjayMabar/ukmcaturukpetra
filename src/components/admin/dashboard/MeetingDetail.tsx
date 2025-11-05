@@ -46,6 +46,128 @@ export const MeetingDetail: React.FC = () => {
   const [users, setUsers] = useState<{ [key: string]: { name: string; nrp?: string } }>({});
   const [showRegistInScannerModal, setShowRegistInScannerModal] = useState(false);
   const [showRegistOutScannerModal, setShowRegistOutScannerModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [bulkActionType, setBulkActionType] = useState<"insert" | "delete" | null>(null);
+  const [processingBulkAction, setProcessingBulkAction] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+
+  const handleBulkInsertAll = async () => {
+    setProcessingBulkAction(true);
+    setErrorMsg("");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) {
+        setErrorMsg("Anda belum login.");
+        return;
+      }
+
+      // Re-authenticate password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: adminPassword,
+      });
+
+      if (signInError) {
+        setErrorMsg("Password salah.");
+        return;
+      }
+
+      // Ambil semua user role 'peserta'
+      const { data: pesertaList, error: userError } = await supabase
+        .from("user_profile")
+        .select("id")
+        .eq("role", "peserta");
+
+      if (userError) throw userError;
+      if (!pesertaList || pesertaList.length === 0) {
+        setErrorMsg("Tidak ada peserta ditemukan.");
+        return;
+      }
+
+      // Buat list data untuk insert
+      const insertData = pesertaList.map((u) => ({
+        user_id: u.id,
+        pertemuan_id: id,
+        isAttending: true,
+        waktu_kehadiran: new Date().toISOString(),
+      }));
+
+      // Insert batch (gunakan upsert untuk cegah duplikasi)
+      await supabase
+      .from("kehadiran")
+      .insert(insertData, { ignoreDuplicates: true });
+
+      await refreshRegistInAttendance();
+      setShowPasswordModal(false);
+      setAdminPassword("");
+      alert("✅ Semua peserta berhasil didaftarkan sebagai hadir!");
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg("Terjadi kesalahan saat mendaftarkan semua peserta.");
+    } finally {
+      setProcessingBulkAction(false);
+    }
+  };
+
+  const handleBulkDeleteAll = async () => {
+    setProcessingBulkAction(true);
+    setErrorMsg("");
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.email) {
+        setErrorMsg("Anda belum login.");
+        return;
+      }
+
+      // Re-authenticate password
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: session.user.email,
+        password: adminPassword,
+      });
+
+      if (signInError) {
+        setErrorMsg("Password salah.");
+        return;
+      }
+
+      // Ambil semua user role 'peserta'
+      const { data: pesertaList, error: userError } = await supabase
+        .from("user_profile")
+        .select("id")
+        .eq("role", "peserta");
+
+      if (userError) throw userError;
+
+      const pesertaIds = pesertaList?.map((u) => u.id) || [];
+      if (pesertaIds.length === 0) {
+        setErrorMsg("Tidak ada peserta ditemukan.");
+        return;
+      }
+
+      // Hapus semua kehadiran peserta untuk pertemuan ini
+      const { error: deleteError } = await supabase
+        .from("kehadiran")
+        .delete()
+        .eq("pertemuan_id", id)
+        .in("user_id", pesertaIds);
+
+      if (deleteError) throw deleteError;
+
+      await refreshRegistInAttendance();
+      setShowPasswordModal(false);
+      setAdminPassword("");
+      alert("🗑️ Semua peserta berhasil dihapus dari daftar kehadiran.");
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg("Terjadi kesalahan saat menghapus peserta.");
+    } finally {
+      setProcessingBulkAction(false);
+    }
+  };
 
   const fetchRegistInData = useCallback(
     async (meetingId: string) => {
@@ -666,13 +788,65 @@ export const MeetingDetail: React.FC = () => {
                       <Download size={16} />
                       <span className="hidden sm:inline">Export</span>
                     </button>
-                    <button
+                    {/* <button
                       onClick={handleRegistIn}
                       className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     >
                       <QrCode size={16} />
                       Scan QR
                     </button>
+                    <button
+                      onClick={() => {
+                        setBulkActionType("insert");
+                        setShowPasswordModal(true);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                    >
+                      <UserCheck size={16} />
+                      Daftarkan Semua
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setBulkActionType("delete");
+                        setShowPasswordModal(true);
+                      }}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                    >
+                      <LogOut size={16} />
+                      Hapus Semua
+                    </button> */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      <button
+                        onClick={handleRegistIn}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <QrCode size={16} />
+                        Scan QR
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setBulkActionType("insert");
+                          setShowPasswordModal(true);
+                        }}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                      >
+                        <UserCheck size={16} />
+                        Daftarkan Semua
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setBulkActionType("delete");
+                          setShowPasswordModal(true);
+                        }}
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                      >
+                        <LogOut size={16} />
+                        Hapus Semua
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -759,6 +933,53 @@ export const MeetingDetail: React.FC = () => {
         }}
         pertemuanId={id || ""}
       />
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-80">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">
+              {bulkActionType === "insert" ? "Daftarkan Semua Peserta" : "Hapus Semua Peserta"}
+            </h3>
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Masukkan password admin untuk konfirmasi.
+            </p>
+            <input
+              type="password"
+              placeholder="Password admin"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {errorMsg && <p className="text-red-500 text-sm mb-3 text-center">{errorMsg}</p>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setAdminPassword("");
+                  setErrorMsg("");
+                }}
+                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 text-sm"
+                disabled={processingBulkAction}
+              >
+                Batal
+              </button>
+              <button
+                onClick={() =>
+                  bulkActionType === "insert" ? handleBulkInsertAll() : handleBulkDeleteAll()
+                }
+                className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
+                  bulkActionType === "insert"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-red-600 hover:bg-red-700"
+                } disabled:opacity-50`}
+                disabled={processingBulkAction}
+              >
+                {processingBulkAction ? "Memproses..." : "Konfirmasi"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
