@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Calendar,
@@ -19,12 +19,17 @@ import {
 import { Pertemuan, Kehadiran, TournamentMatch, RegistOut } from "../../../types";
 import { CheckInData } from "./CheckInData";
 import { CheckOutData } from "./CheckOutData";
-import { MatchRecap } from "./MatchRecap";
+// import { MatchRecap } from "./MatchRecap";
 import { supabase } from "../../../db_client/client";
 import { ErrorModal } from "../../error_modal/ErrorModal";
 import { OpenRegistInScannerCamera } from "./OpenRegistInScannerCamera";
 import { OpenRegistOutScannerCamera } from "./OpenRegistOutScannerCamera";
 import * as XLSX from "xlsx";
+import RoundsCard from "./RoundsCard";
+
+interface LocationState {
+  activeTab?: 'attendance' | 'matches';
+}
 
 export const MeetingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +56,35 @@ export const MeetingDetail: React.FC = () => {
   const [bulkActionType, setBulkActionType] = useState<"insert" | "delete" | null>(null);
   const [processingBulkAction, setProcessingBulkAction] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const location = useLocation();
+  const locationState = location.state as LocationState;
+  const [searchParams, setSearchParams] = useSearchParams();
 
+
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const tabFromState = (location.state as LocationState)?.activeTab;
+    
+    // Priority: URL params > Location state > Default
+    if (tabFromUrl === 'matches' && meeting?.is_tournament) {
+      setActiveTab('matches');
+    } else if (tabFromState === 'matches' && meeting?.is_tournament) {
+      setActiveTab('matches');
+      // Update URL untuk persist pada refresh
+      setSearchParams({ tab: 'matches' });
+    } else if (tabFromUrl === 'attendance') {
+      setActiveTab('attendance');
+    }
+  }, [searchParams, location.state, meeting?.is_tournament, setSearchParams]);
+
+  const handleTabChange = (tab: "attendance" | "matches") => {
+    setActiveTab(tab);
+    if (tab === 'matches') {
+      setSearchParams({ tab: 'matches' });
+    } else {
+      setSearchParams({ tab: 'attendance' });
+    }
+  };
 
   const handleBulkInsertAll = async () => {
     setProcessingBulkAction(true);
@@ -639,7 +672,10 @@ export const MeetingDetail: React.FC = () => {
   const registInCount = meeting.attendees.filter((a) => a.isAttending).length;
   const registOutCount = meeting.registOutData.filter((a) => a.isRegistedOut).length;
 
-  const handleBack = () => navigate(-1);
+  const handleBack = () => {
+    navigate("/admin/dashboard");
+  };
+
   const handleRegistIn = () => setShowRegistInScannerModal(true);
   const handleRegistOut = () => setShowRegistOutScannerModal(true);
   const handleUpdateAttendance = (userId: string, isPresent: boolean) => {
@@ -742,7 +778,7 @@ export const MeetingDetail: React.FC = () => {
             <div className="border-b border-gray-200">
               <nav className="flex">
                 <button
-                  onClick={() => setActiveTab("attendance")}
+                  onClick={() => handleTabChange("attendance")}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === "attendance"
                       ? "border-blue-500 text-blue-600 bg-blue-50"
@@ -753,7 +789,7 @@ export const MeetingDetail: React.FC = () => {
                   Data Kehadiran
                 </button>
                 <button
-                  onClick={() => setActiveTab("matches")}
+                  onClick={() => handleTabChange("matches")}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === "matches"
                       ? "border-blue-500 text-blue-600 bg-blue-50"
@@ -761,7 +797,7 @@ export const MeetingDetail: React.FC = () => {
                   }`}
                 >
                   <Trophy size={18} />
-                  Hasil Pertandingan ({meeting.matches.length})
+                  Pertandingan
                 </button>
               </nav>
             </div>
@@ -788,34 +824,6 @@ export const MeetingDetail: React.FC = () => {
                       <Download size={16} />
                       <span className="hidden sm:inline">Export</span>
                     </button>
-                    {/* <button
-                      onClick={handleRegistIn}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                    >
-                      <QrCode size={16} />
-                      Scan QR
-                    </button>
-                    <button
-                      onClick={() => {
-                        setBulkActionType("insert");
-                        setShowPasswordModal(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                    >
-                      <UserCheck size={16} />
-                      Daftarkan Semua
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setBulkActionType("delete");
-                        setShowPasswordModal(true);
-                      }}
-                      className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                    >
-                      <LogOut size={16} />
-                      Hapus Semua
-                    </button> */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                       <button
                         onClick={handleRegistIn}
@@ -903,13 +911,7 @@ export const MeetingDetail: React.FC = () => {
         {meeting.is_tournament && activeTab === "matches" && (
           <div className="bg-white rounded-xl shadow-lg">
             <div className="p-6">
-              <MatchRecap
-                matches={meeting.matches}
-                users={users}
-                attendees={meeting.attendees}
-                id={Number(id)}
-                onMatchAdded={refreshMatches}
-              />
+              <RoundsCard pertemuanId={id || ""} />
             </div>
           </div>
         )}

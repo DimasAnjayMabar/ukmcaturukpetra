@@ -2,9 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../db_client/client';
-import { Pertemuan, UserProfile, TournamentMatch } from '../../../types';
+import { Pertemuan, UserProfile, TournamentMatch, TournamentState } from '../../../types';
 import Bracket from './Bracket';
 import { pairPlayers } from '../../../utils/swiss';
+import { TournamentStateService } from '../../../services/TournamentStateService';
 
 interface Player extends UserProfile {
   score: number;
@@ -13,19 +14,57 @@ interface Player extends UserProfile {
   tiebreak2: number; // Sonneborn–Berger
 }
 
+// Initial state
+const getInitialState = (): TournamentState => ({
+  players: [],
+  matches: [],
+  currentRound: 1,
+  totalRounds: 1,
+  isRoundsSet: false,
+  winner: null,
+  maxCompletedRound: 0,
+  allRoundsMatches: {},
+  roundScores: [],
+  metadata: {
+    version: '1.0',
+    lastUpdated: new Date().toISOString()
+  }
+});
+
 const Matchmaking: React.FC = () => {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [matches, setMatches] = useState<TournamentMatch[]>([]);
+  const [state, setState] = useState<TournamentState>(getInitialState());
   const [tournaments, setTournaments] = useState<Pertemuan[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [currentRound, setCurrentRound] = useState(1);
-  const [totalRounds, setTotalRounds] = useState(1);
-  const [isRoundsSet, setIsRoundsSet] = useState(false);
-  const [winner, setWinner] = useState<string | null>(null);
-  const [maxCompletedRound, setMaxCompletedRound] = useState(0);
-  const [allRoundsMatches, setAllRoundsMatches] = useState<Record<number, TournamentMatch[]>>({});
-  const [roundScores, setRoundScores] = useState<Map<string, number>>(new Map());
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Destructure state untuk mudah digunakan
+  const { 
+    players, 
+    matches, 
+    currentRound, 
+    totalRounds, 
+    isRoundsSet, 
+    winner, 
+    maxCompletedRound, 
+    allRoundsMatches, 
+    roundScores 
+  } = state;
+
+  // Helper function untuk update state dan auto-save
+  const updateState = async (updates: Partial<TournamentState>) => {
+    const newState = { ...state, ...updates };
+    setState(newState);
+    
+    // Auto-save ke database jika tournament dipilih
+    if (selectedTournament) {
+      try {
+        await TournamentStateService.saveState(selectedTournament, newState);
+      } catch (error) {
+        console.error('Failed to auto-save state:', error);
+      }
+    }
+  };
 
   // Fetch list tournament
   useEffect(() => {
@@ -40,32 +79,69 @@ const Matchmaking: React.FC = () => {
     fetchTournaments();
   }, []);
 
-  // Reset saat tournament diganti
+  // Load state dari database saat tournament dipilih
   useEffect(() => {
     if (selectedTournament) {
-      setPlayers([]);
-      setMatches([]);
-      setAllRoundsMatches({});
-      setCurrentRound(1);
-      setMaxCompletedRound(0);
-      setWinner(null);
-      setIsRoundsSet(false);
-      setTotalRounds(1);
-      fetchTournamentData(selectedTournament);
+      loadTournamentState(selectedTournament);
     } else {
-      setPlayers([]);
-      setMatches([]);
-      setAllRoundsMatches({});
-      setWinner(null);
-      setIsRoundsSet(false);
+      // Reset ke initial state jika tidak ada tournament dipilih
+      setState(getInitialState());
     }
+  }, [selectedTournament]);
+
+  const loadTournamentState = async (tournamentId: string) => {
+    setIsLoading(true);
+    try {
+      const savedState = await TournamentStateService.loadState(tournamentId);
+      
+      if (savedState) {
+        // Restore state dari database
+        setState(savedState);
+        console.log('✅ Tournament state loaded from database');
+      } else {
+        // Jika tidak ada state tersimpan, fetch data fresh
+        await fetchTournamentData(tournamentId);
+      }
+    } catch (error: any) {
+      console.error('Error loading state:', error);
+      setError(`Error loading tournament: ${error.message}`);
+      // Fallback: fetch data fresh
+      await fetchTournamentData(tournamentId);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Real-time subscription untuk sync antar admin
+  useEffect(() => {
+    if (!selectedTournament) return;
+
+    const channel = supabase
+      .channel(`tournament:${selectedTournament}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'tournament_state',
+          filter: `pertemuan_id=eq.${selectedTournament}`
+        },
+        (payload) => {
+          console.log('🔄 State updated by other admin, refreshing...');
+          loadTournamentState(selectedTournament);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedTournament]);
 
   const updateTiebreakersToDatabase = async (players: Player[]) => {
     if (!selectedTournament) return;
 
     try {
-      // Update score dan tiebreaker untuk setiap player
       const updatePromises = players.map(async (player) => {
         const { error } = await supabase
           .from('user_profile')
@@ -76,14 +152,11 @@ const Matchmaking: React.FC = () => {
           })
           .eq('id', player.id);
 
-        if (error) {
-          console.error(`Error updating stats for player ${player.name}:`, error);
-          throw error;
-        }
+        if (error) throw error;
       });
 
       await Promise.all(updatePromises);
-      console.log('Scores and tiebreakers updated successfully for all players');
+      console.log('Scores and tiebreakers updated successfully');
     } catch (error: any) {
       console.error('Error updating stats:', error);
       setError(`Error updating stats: ${error.message}`);
@@ -91,7 +164,7 @@ const Matchmaking: React.FC = () => {
   };
 
   const fetchTournamentData = async (tournamentId: string, preserveRound?: number) => {
-    // --- Fetch peserta ---
+    // Fetch peserta
     const { data: attendanceData, error: attendanceError } = await supabase
       .from('kehadiran')
       .select('user_profile:user_id(*)')
@@ -103,7 +176,7 @@ const Matchmaking: React.FC = () => {
       return;
     }
 
-    // --- Fetch semua match ---
+    // Fetch semua match
     const { data: matchData, error: matchError } = await supabase
       .from('turnamen')
       .select('*')
@@ -116,7 +189,7 @@ const Matchmaking: React.FC = () => {
       return;
     }
 
-    // --- Group match by round ---
+    // Process data sama seperti sebelumnya
     const matchesByRound: Record<number, TournamentMatch[]> = {};
     let maxRound = 0;
     matchData.forEach((match: any) => {
@@ -126,7 +199,6 @@ const Matchmaking: React.FC = () => {
       maxRound = Math.max(maxRound, round);
     });
 
-    // --- Hitung ronde yang sudah complete ---
     let maxCompletedRoundLocal = 0;
     Object.entries(matchesByRound).forEach(([roundKey, roundMatches]) => {
       const roundNum = Number(roundKey);
@@ -134,22 +206,21 @@ const Matchmaking: React.FC = () => {
       if (isCompleted) maxCompletedRoundLocal = Math.max(maxCompletedRoundLocal, roundNum);
     });
 
-    // --- Buat map awal player ---
     const initialPlayersMap: Record<string, Player> = {};
     attendanceData.forEach((item: any) => {
       const user = item.user_profile;
       initialPlayersMap[user.id] = {
         ...user,
-        score: 0, // Mulai dari 0, akan dihitung ulang
+        score: 0,
         playedOpponents: [],
-        tiebreak1: 0, // Akan dihitung ulang
-        tiebreak2: 0 // Akan dihitung ulang
+        tiebreak1: 0,
+        tiebreak2: 0
       };
     });
 
     const cumulativePlayersMap = JSON.parse(JSON.stringify(initialPlayersMap));
 
-    // --- Akumulasi skor per ronde (recalculate from scratch) ---
+    // Calculate scores and tiebreakers
     for (let r = 1; r <= maxRound; r++) {
       if (matchesByRound[r]?.every(m => m.hasil_pemain_1 !== null)) {
         matchesByRound[r].forEach((match: any) => {
@@ -165,59 +236,50 @@ const Matchmaking: React.FC = () => {
       }
     }
 
-    // --- Hitung Tiebreakers ---
+    // Calculate tiebreakers
     Object.values(cumulativePlayersMap).forEach(p => {
-      // TB1 = Direct Encounter (total skor dari semua match yang dimainkan)
       let directEncounterTotal = 0;
-      
-      // Hitung semua hasil match yang dimainkan pemain ini
       for (const round of Object.values(matchesByRound)) {
         round.forEach((match: any) => {
           if (match.hasil_pemain_1 == null) return;
-          
           if (match.pemain_1_id === p.id) {
-            // Player adalah pemain 1, tambahkan hasilnya
             directEncounterTotal += match.hasil_pemain_1;
           } else if (match.pemain_2_id === p.id) {
-            // Player adalah pemain 2, tambahkan hasilnya
             directEncounterTotal += match.hasil_pemain_2;
           }
         });
       }
       p.tiebreak1 = directEncounterTotal;
 
-      // TB2 = Buchholz (total skor semua lawan)
       p.tiebreak2 = p.playedOpponents.reduce(
         (sum, oppId) => sum + (cumulativePlayersMap[oppId]?.score || 0),
         0
       );
     });
 
-    // --- Update score dan tiebreakers ke database ---
+    // Update scores dan tiebreakers ke database
     const playersArray = Object.values(cumulativePlayersMap) as Player[];
     await updateTiebreakersToDatabase(playersArray);
 
-    // --- Update pemain ---
-    setPlayers(playersArray);
-
-    // --- Tentukan pemenang bila semua ronde selesai ---
+    // Determine winner
     const effectiveTotalRounds = isRoundsSet ? totalRounds : maxRound;
+    let tournamentWinner = null;
     if (maxCompletedRoundLocal >= effectiveTotalRounds && effectiveTotalRounds > 0) {
       const sortedPlayers = playersArray.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         if (b.tiebreak1 !== a.tiebreak1) return b.tiebreak1 - a.tiebreak1;
         return b.tiebreak2 - a.tiebreak2;
       });
-      if (sortedPlayers.length > 0) setWinner(sortedPlayers[0].name);
+      if (sortedPlayers.length > 0) tournamentWinner = sortedPlayers[0].name;
     }
 
-    // --- Tentukan ronde aktif ---
+    // Determine current round to show
     const nextRound = maxCompletedRoundLocal + 1;
     const roundToShow = typeof preserveRound === 'number'
       ? Math.max(1, preserveRound)
       : Math.max(1, nextRound > maxRound ? maxRound : nextRound);
 
-    // --- Siapkan score map ronde saat ini ---
+    // Prepare scores for current round
     const scoresForRoundMap = new Map<string, number>();
     const playersMapForRound = JSON.parse(JSON.stringify(initialPlayersMap));
     for (let r = 1; r < Math.max(1, roundToShow); r++) {
@@ -228,11 +290,16 @@ const Matchmaking: React.FC = () => {
     }
     Object.values(playersMapForRound).forEach((p: any) => scoresForRoundMap.set(p.id, p.score));
 
-    setRoundScores(scoresForRoundMap);
-    setCurrentRound(roundToShow);
-    setMatches(matchesByRound[roundToShow] || []);
-    setAllRoundsMatches(matchesByRound);
-    setMaxCompletedRound(maxCompletedRoundLocal);
+    // Update state dengan data yang di-fetch
+    await updateState({
+      players: playersArray,
+      matches: matchesByRound[roundToShow] || [],
+      currentRound: roundToShow,
+      maxCompletedRound: maxCompletedRoundLocal,
+      allRoundsMatches: matchesByRound,
+      roundScores: Array.from(scoresForRoundMap.entries()),
+      winner: tournamentWinner
+    });
   };
 
   const handleGenerateMatches = async () => {
@@ -274,35 +341,35 @@ const Matchmaking: React.FC = () => {
       return match;
     });
 
-    setMatches(matchesWithByeResults);
-    setAllRoundsMatches(prev => ({
-      ...prev,
-      [currentRound]: matchesWithByeResults
-    }));
+    await updateState({
+      matches: matchesWithByeResults,
+      allRoundsMatches: {
+        ...allRoundsMatches,
+        [currentRound]: matchesWithByeResults
+      }
+    });
 
     setError(null);
   };
 
   const handleSetWinner = (pairingId: number, matchId: number | undefined, winnerId: string) => {
-    setMatches(prevMatches =>
-      prevMatches.map(m => {
-        if (m.pairingId === pairingId && (matchId === undefined || m.id === matchId)) {
-          return { ...m, pemenang: winnerId };
-        }
-        return m;
-      })
-    );
+    const updatedMatches = matches.map(m => {
+      if (m.pairingId === pairingId && (matchId === undefined || m.id === matchId)) {
+        return { ...m, pemenang: winnerId };
+      }
+      return m;
+    });
+    updateState({ matches: updatedMatches });
   };
 
   const handleSetTie = (pairingId: number, matchId: number | undefined) => {
-    setMatches(prevMatches =>
-      prevMatches.map(m => {
-        if (m.pairingId === pairingId && (matchId === undefined || m.id === matchId)) {
-          return { ...m, pemenang: 'TIE' };
-        }
-        return m;
-      })
-    );
+    const updatedMatches = matches.map(m => {
+      if (m.pairingId === pairingId && (matchId === undefined || m.id === matchId)) {
+        return { ...m, pemenang: 'TIE' };
+      }
+      return m;
+    });
+    updateState({ matches: updatedMatches });
   };
 
   const handleSaveResults = async () => {
@@ -349,9 +416,10 @@ const Matchmaking: React.FC = () => {
 
   const handleSetRounds = () => {
     if (totalRounds >= 1 && totalRounds <= 20) {
-      setIsRoundsSet(true);
-      // Pastikan currentRound tetap 1 saat mulai tournament
-      setCurrentRound(1);
+      updateState({ 
+        isRoundsSet: true,
+        currentRound: 1 // Reset ke round 1 saat mulai tournament
+      });
     } else {
       setError("Total rounds must be between 1-20.");
     }
@@ -375,6 +443,17 @@ const Matchmaking: React.FC = () => {
     if (isRoundCompleted(round)) return 'completed';
     return 'in-progress';
   };
+
+  // Tambahkan loading indicator
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex justify-center items-center h-64">
+          <div className="text-lg">Loading tournament data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -423,25 +502,23 @@ const Matchmaking: React.FC = () => {
             value={totalRounds === 0 ? '' : totalRounds}
             onChange={(e) => {
               const value = e.target.value;
-              
               if (value === '') {
-                setTotalRounds(0);
+                updateState({ totalRounds: 0 });
                 return;
               }
-              
               if (/^\d+$/.test(value)) {
                 const numValue = Number(value);
                 if (numValue >= 1 && numValue <= 20) {
-                  setTotalRounds(numValue);
+                  updateState({ totalRounds: numValue });
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value;
               if (value === '' || Number(value) < 1) {
-                setTotalRounds(1);
+                updateState({ totalRounds: 1 });
               } else if (Number(value) > 20) {
-                setTotalRounds(20);
+                updateState({ totalRounds: 20 });
               }
             }}
             placeholder="Enter number of rounds (1-20)"
@@ -574,7 +651,7 @@ const Matchmaking: React.FC = () => {
 
           <Bracket
             matches={matches}
-            roundScores={roundScores}
+            roundScores={new Map(roundScores)}
             onSetWinner={handleSetWinner}
             onSetTie={handleSetTie}
             roundNumber={currentRound}

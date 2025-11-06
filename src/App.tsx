@@ -19,6 +19,7 @@ import HomePage from "./components/peserta/homepage/HomePage";
 import ChessClock from './components/peserta/feature/ChessClock';
 import AttendanceList from './components/peserta/feature/DaftarKehadiran';
 import Scoreboard from './components/peserta/feature/Scoreboard';
+import PairingPage from './components/admin/dashboard/PairingPage';
 
 function App() {
   useEffect(() => {
@@ -50,6 +51,7 @@ function App() {
         <Route path="/admin/pertemuan/:id" element={<MeetingDetail />} />
         <Route path="/admin/verifikasi-email-forgot-password" element={<VerifyForgotPassword />}/>
         <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+        <Route path="/admin/pairing/:id" element={<PairingPage/>}></Route>
 
         {/* peserta */}
         <Route path='/peserta/login' element={<LoginPagePeserta/>} />

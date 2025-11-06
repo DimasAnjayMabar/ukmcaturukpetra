@@ -63,3 +63,28 @@ export type TournamentMatch = {
   hasil_pemain_2?: number | null; // Optional for new matches
   pemenang?: string | null; // Optional for new matches
 }
+
+export interface Player extends UserProfile {
+  score: number;
+  playedOpponents: string[];
+  tiebreak1: number;
+  tiebreak2: number;
+}
+
+// types/index.ts - Tambahkan interface ini
+export interface TournamentState {
+  players: Player[];
+  matches: TournamentMatch[];
+  currentRound: number;
+  totalRounds: number;
+  isRoundsSet: boolean;
+  winner: string | null;
+  maxCompletedRound: number;
+  allRoundsMatches: Record<number, TournamentMatch[]>;
+  roundScores: [string, number][];
+  metadata: {
+    version: string;
+    lastUpdated: string;
+    updatedBy?: string;
+  };
+}

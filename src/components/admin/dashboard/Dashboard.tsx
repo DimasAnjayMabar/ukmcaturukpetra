@@ -271,8 +271,7 @@ function Dashboard() {
 
   // Navigasi item
   const navItems = [
-    { id: 'meetings', label: 'Daftar Pertemuan', icon: Calendar },
-    { id: 'matchmaking', label: 'Matchmaking', icon: Swords },
+    { id: 'meetings', label: 'Daftar Pertemuan', icon: Calendar }
   ];
 
   return (
