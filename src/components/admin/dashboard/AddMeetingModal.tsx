@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, MapPin, FileText } from 'lucide-react';
 import { Pertemuan } from '../../../types';
 import { supabase } from '../../../db_client/client';
@@ -31,6 +31,20 @@ export const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [qr_code, setQrCode] = useState('');
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+  if (isOpen) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+
+  return () => {
+    document.body.style.overflow = '';
+  };
+}, [isOpen]);
+
 
   if (!isOpen) return null;
 
@@ -124,21 +138,64 @@ export const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">Tambah Pertemuan Baru</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 p-1"
-            disabled={isLoading}
-          >
-            <X size={20} />
-          </button>
-        </div>
+  const handleWheel = (e: React.WheelEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+    // Normal scrolling behavior: scroll the element
+    // We compute future scrollTop to determine if we're at an edge
+    const futureScrollTop = el.scrollTop + e.deltaY;
+    const maxScrollTop = el.scrollHeight - el.clientHeight;
+
+    // If the scroll would go past top or bottom, prevent bubbling
+    if (futureScrollTop <= 0) {
+      // clamp to 0 and prevent event from escaping to the page
+      el.scrollTop = 0;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    if (futureScrollTop >= maxScrollTop) {
+      el.scrollTop = maxScrollTop;
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // otherwise let browser do the scroll on the element
+    // but set the scrollTop manually for consistent behavior
+    el.scrollTop = futureScrollTop;
+    e.preventDefault();
+  };
+
+
+return (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-xl">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+        <h2 className="text-xl font-semibold text-gray-800">Tambah Pertemuan Baru</h2>
+        <button
+          onClick={handleClose}
+          className="text-gray-400 hover:text-gray-600 p-1"
+          disabled={isLoading}
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="overflow-y-auto p-6 space-y-4 flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 lg:scrollbar">
+        <div
+          ref={scrollRef}
+          onWheel={handleWheel}
+          tabIndex={0}
+          className="overflow-y-auto space-y-4 flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 lg:scrollbar overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+        <form id="addMeetingForm" onSubmit={handleSubmit} className="space-y-4">
           {localError && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
               {localError}
@@ -250,35 +307,39 @@ export const AddMeetingModal: React.FC<AddMeetingModalProps> = ({
             </label>
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              disabled={isLoading}
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Memproses...
-                </>
-              ) : (
-                'Tambah Pertemuan'
-              )}
-            </button>
-          </div>
         </form>
       </div>
+      </div>
+
+      <div className="flex gap-3 rounded-b-2xl p-6 border-t border-gray-200 flex-shrink-0 bg-white">
+        <button
+          type="button"
+          onClick={handleClose}
+          className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          disabled={isLoading}
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          form="addMeetingForm"
+          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Memproses...
+            </>
+          ) : (
+            'Tambah Pertemuan'
+          )}
+        </button>
+      </div>
     </div>
-  );
+  </div>
+);
 };
