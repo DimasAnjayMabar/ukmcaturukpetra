@@ -222,7 +222,7 @@ function Dashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Memuat data...</p>
+          <p className="text-gray-600">Loading data...</p>
         </div>
       </div>
     );
@@ -286,36 +286,40 @@ function Dashboard() {
 
       {/* Side Navbar */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        border-r border-gray-600 fixed lg:static inset-y-0 left-0 z-30 w-64 bg-[#0c1015] shadow-lg transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <Trophy className="text-white" size={24} />
+          <div className="p-4 border-b border-gray-600">
+            <div className="flex items-center gap-3 mt-4 mb-3">
+              <div className="bg-yellow-400 p-2 rounded-full">
+                <Trophy className="text-black" size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">Admin Catur</h1>
-                <p className="text-gray-600 text-sm">Kelola pertemuan catur</p>
+                <h1 className="text-xl font-bold">
+                  <span className="text-white">Admin</span>{" "}
+                  <span className="text-yellow-500 mx-1">|</span>
+                  <span className="text-yellow-400">CATUR</span>
+                </h1>
+                {/* <p className="text-[#969EaF] text-sm">Kelola pertemuan catur</p> */}
               </div>
             </div>
           </div>
 
            {/* User Profile Section */}
-           <div className="flex items-center border-b p-4">
-                          <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-                            <FiUser size={20} />
-                          </div>
-                          <div>
-                            <p className="font-medium">{userProfile?.name || 'Nama Peserta'}</p>
-                            <p className="text-sm text-gray-500">NRP: {userProfile?.nrp || '00000000'}</p>
-                          </div>
-                        </div>
+           <div className="flex items-center border-b border-gray-600 p-4">
+            <div className="mr-3 flex h-10 w-10 items-center border border-gray-600 justify-center rounded-full text-yellow-400">
+              <FiUser size={20} />
+            </div>
+            <div>
+              <p className="font-medium text-sky-50">{userProfile?.name || 'Nama Peserta'}</p>
+              <p className="text-sm text-gray-500">NRP: {userProfile?.nrp || '00000000'}</p>
+            </div>
+          </div>
                         
           {/* Navigation */}
-          <nav className="flex-1 p-4">
+          <nav className="flex-1">
             <ul className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -326,13 +330,13 @@ function Dashboard() {
                         setActiveView(item.id as 'meetings' | 'matchmaking');
                         setIsSidebarOpen(false);
                       }}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left align-center transition-colors ${
                         activeView === item.id
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-[#0c1015] to-[#1f2038] text-gray-200 border-b border-gray-600'
+                          : 'text-white border-b border-gray-600'
                       }`}
                     >
-                      <Icon size={20} />
+                      <Icon size={20} className='text-gray-500'/>
                       <span className="font-medium">{item.label}</span>
                     </button>
                   </li>
@@ -342,10 +346,10 @@ function Dashboard() {
           </nav>
 
           {/* Logout Button */}
-          <div className="border-t p-4">
+          <div className="border-t border-gray-600 p-4">
             <button
               onClick={() => setIsLogoutModalOpen(true)}
-              className="flex w-full items-center rounded-lg p-3 text-red-600 transition-colors hover:bg-red-50"
+              className="border border-red-600 flex w-full items-center rounded-lg p-3 text-red-600 transition-colors duration-200 hover:bg-[#FE0031] hover:text-white"
             >
               <FiLogOut className="mr-3" size={20} />
               <span>Logout</span>
@@ -355,24 +359,29 @@ function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-0">
+      <div className="flex-1 lg:ml-0 bg-[#0D1117]">
         {/* Top Header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="block md:hidden sticky top-0 z-30 bg-[#010409] shadow-sm border-b border-gray-700">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 lg:hidden"
+                className="p-2 rounded-lg text-yellow-400 hover:border hover:border-gray-600 lg:hidden"
                 aria-label="Toggle sidebar"
               >
                 <Menu size={24} />
               </button>
               
-              <div className="lg:hidden text-center">
-                <h1 className="text-xl font-bold text-gray-800">Admin Kegiatan Catur</h1>
+              <div className="lg:hidden text-center p-2">
+                <h1 className="text-xl font-bold">
+                  <span className="text-white">Admin</span>{" "}
+                  <span className="text-yellow-500 mx-2">|</span>
+                  <span className="text-yellow-400">UKM Catur</span>
+                </h1>
+
               </div>
               
-              <div className="w-10 lg:hidden"></div> {/* Spacer for mobile */}
+              {/* <div className="w-10 lg:hidden"></div>  */}
             </div>
           </div>
         </div>
@@ -381,12 +390,12 @@ function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
           {activeView === 'meetings' ? (
             <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-lg md:text-xl font-bold text-gray-800">Daftar Pertemuan</h2>
+              <div className="text-start border-b border-gray-600">
+                <h2 className="text-lg md:text-xl font-bold text-sky-50 p-2 mb-4">Daftar Pertemuan</h2>
               </div>
               
               {meetings.length > 0 ? (
-                <div className="bg-white p-4 md:p-6 rounded-xl shadow-lg">
+                <div className="p-4 md:p-6 rounded-xl shadow-lg border border-gray-600">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {meetings.map((meeting) => (
                       <MeetingCard
@@ -417,7 +426,7 @@ function Dashboard() {
       {activeView === 'meetings' && (
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-10 flex items-center justify-center"
+          className="fixed bottom-6 right-6 bg-yellow-400 hover:bg-yellow-500 text-black p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-10 flex items-center justify-center"
           aria-label="Tambah Pertemuan"
         >
           <Plus size={24} />
