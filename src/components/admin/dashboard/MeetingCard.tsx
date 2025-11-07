@@ -16,7 +16,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
   onDeleteClick 
 }) => {
   return (
-    <div className="bg-[#0D1117] hover:bg-[#1D2127] rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-600">
+    <div className="group bg-[#f5fafd] hover:bg-[#f5fafd] rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-600">
         {/* Header with title and tournament badge */}
         <div className="bg-gradient-to-r from-[#0c1015] to-[#1f2038] rounded-t-xl flex items-start justify-between px-6 pb-4 pt-6">
           <h3 className="text-xl font-bold text-sky-50 leading-tight">
@@ -34,7 +34,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
 
         {/* Description */}
         {meeting.deskripsi && (
-          <p className="text-[#969EaF] text-sm mb-5 line-clamp-2 px-6">
+          <p className="text-gray-600 text-sm mb-5 line-clamp-2 px-6">
             {meeting.deskripsi}
           </p>
         )}
@@ -44,17 +44,17 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
         
         {/* Meeting details */}
         <div className="space-y-3 mb-5 px-6">
-          <div className="flex items-center text-sky-100">
+          <div className="flex items-center text-gray-800 transition-colors duration-200 ">
             <Calendar size={16} className="mr-3 text-[#178be4]" />
             <span className="text-sm">{meeting.tanggal}</span>
           </div>
-          <div className="flex items-center text-sky-100">
+          <div className="flex items-center text-gray-800 transition-colors duration-200 ">
             <Clock size={16} className="mr-3 text-[#0bde7b]" />
             <span className="text-sm">
               {meeting.waktu_mulai} - {meeting.waktu_selesai || 'Selesai'}
             </span>
           </div>
-          <div className="flex items-center text-sky-100">
+          <div className="flex items-center text-gray-800 transition-colors duration-200 ">
             <MapPin size={16} className="mr-3 text-[#FE0081]" />
             <span className="text-sm">{meeting.lokasi}</span>
           </div>
@@ -74,13 +74,13 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({
             </button>
             <button
               onClick={() => onEditClick(meeting.id)}
-              className="flex justify-center items-center border border-gray-600 hover:bg-[#2A3044] text-white font-medium py-2 px-3 rounded-lg transition-colors duration-200"
+              className="flex justify-center items-center border border-gray-600 hover:bg-[#2A3044] text-gray-900 hover:text-white font-medium py-2 px-3 rounded-lg transition-colors duration-200"
             >
               <Bolt size={20} />
             </button>
                       <button
             onClick={() => onViewDetails(meeting.id)}
-            className="border border-gray-600 flex-1 hover:bg-[#2A3044] text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 "
+            className="border border-gray-600 flex-1 hover:bg-[#2A3044] text-gray-900 hover:text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 "
             disabled={!onViewDetails}
           >
             View Details

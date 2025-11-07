@@ -1,16 +1,25 @@
-import { Calendar, DoorOpen, Plus, Trophy, Swords, Menu, X } from 'lucide-react';
-import { MeetingCard } from './MeetingCard';
-import { AddMeetingModal } from './AddMeetingModal';
-import { useEffect, useState } from 'react';
-import { LogoutModal } from '../logout_modal/LogoutModal';
-import { supabase } from '../../../db_client/client';
-import { ErrorModal } from '../../error_modal/ErrorModal';
-import { useNavigate } from 'react-router-dom';
-import { Pertemuan } from '../../../types';
-import { EditMeetingModal } from './EditMeetingModal';
-import { DeleteMeetingModal } from './DeleteMeetingModal';
-import Matchmaking from './Matchmaking';
-import { FiLogOut, FiUser } from 'react-icons/fi';
+import {
+  Calendar,
+  DoorOpen,
+  Plus,
+  Trophy,
+  Swords,
+  Menu,
+  X,
+  Users,
+} from "lucide-react";
+import {MeetingCard} from "./MeetingCard";
+import {AddMeetingModal} from "./AddMeetingModal";
+import {useEffect, useState} from "react";
+import {LogoutModal} from "../logout_modal/LogoutModal";
+import {supabase} from "../../../db_client/client";
+import {ErrorModal} from "../../error_modal/ErrorModal";
+import {useNavigate} from "react-router-dom";
+import {Pertemuan} from "../../../types";
+import {EditMeetingModal} from "./EditMeetingModal";
+import {DeleteMeetingModal} from "./DeleteMeetingModal";
+import Matchmaking from "./Matchmaking";
+import {FiLogOut, FiUser} from "react-icons/fi";
 
 // Add interface for user profile
 interface UserProfile {
@@ -30,12 +39,16 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(
+    null
+  );
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'meetings' | 'matchmaking'>('meetings');
+  const [activeView, setActiveView] = useState<"meetings" | "matchmaking">(
+    "meetings"
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // Add state for user profile
 
@@ -43,7 +56,10 @@ function Dashboard() {
 
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      const {
+        data: {session},
+        error: authError,
+      } = await supabase.auth.getSession();
 
       if (!session || authError) {
         setIsUnauthorized(true);
@@ -52,17 +68,17 @@ function Dashboard() {
 
       // Fetch user profile data first
       await fetchUserProfile(session.user.id);
-      
+
       // Then fetch meetings and setup real-time
       await fetchMeetings();
-      
+
       // Setup real-time subscription after initial data load
       const channel = setupRealTimeSubscription();
 
       // Blok navigasi back
-      window.history.pushState(null, '', window.location.href);
-      window.onpopstate = function() {
-        window.history.pushState(null, '', window.location.href);
+      window.history.pushState(null, "", window.location.href);
+      window.onpopstate = function () {
+        window.history.pushState(null, "", window.location.href);
       };
 
       return channel; // Return channel for cleanup
@@ -73,9 +89,9 @@ function Dashboard() {
     return () => {
       // Bersihkan event listener saat komponen unmount
       window.onpopstate = null;
-      
+
       // Cleanup real-time subscription properly
-      subscriptionPromise.then(channel => {
+      subscriptionPromise.then((channel) => {
         if (channel) {
           supabase.removeChannel(channel);
         }
@@ -86,21 +102,21 @@ function Dashboard() {
   // Fetch user profile data
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('user_profile')
-        .select('*')
-        .eq('id', userId)
-        .eq('role', 'admin')
+      const {data, error} = await supabase
+        .from("user_profile")
+        .select("*")
+        .eq("id", userId)
+        .eq("role", "admin")
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error("Error fetching user profile:", error);
         return;
       }
 
       setUserProfile(data);
     } catch (err) {
-      console.error('Error in fetchUserProfile:', err);
+      console.error("Error in fetchUserProfile:", err);
     }
   };
 
@@ -108,58 +124,60 @@ function Dashboard() {
   const setupRealTimeSubscription = () => {
     try {
       const channel = supabase
-        .channel('pertemuan_changes')
+        .channel("pertemuan_changes")
         .on(
-          'postgres_changes',
+          "postgres_changes",
           {
-            event: '*',
-            schema: 'public',
-            table: 'pertemuan'
+            event: "*",
+            schema: "public",
+            table: "pertemuan",
           },
           (payload) => {
-            console.log('Real-time change detected:', payload);
-            
+            console.log("Real-time change detected:", payload);
+
             switch (payload.eventType) {
-              case 'INSERT':
+              case "INSERT":
                 setMeetings((prev) => {
                   const newMeeting = payload.new as Pertemuan;
                   // Avoid duplicates
-                  if (prev.some(meeting => meeting.id === newMeeting.id)) {
+                  if (prev.some((meeting) => meeting.id === newMeeting.id)) {
                     return prev;
                   }
                   return [newMeeting, ...prev];
                 });
                 break;
-                
-              case 'UPDATE':
+
+              case "UPDATE":
                 setMeetings((prev) =>
                   prev.map((meeting) =>
                     meeting.id === (payload.new as Pertemuan).id
-                      ? { ...meeting, ...payload.new }
+                      ? {...meeting, ...payload.new}
                       : meeting
                   )
                 );
                 break;
-                
-              case 'DELETE':
+
+              case "DELETE":
                 setMeetings((prev) =>
-                  prev.filter((meeting) => meeting.id !== (payload.old as { id: string }).id)
+                  prev.filter(
+                    (meeting) => meeting.id !== (payload.old as {id: string}).id
+                  )
                 );
                 break;
-                
+
               default:
-                console.log('Unhandled event type:', payload.eventType);
+                console.log("Unhandled event type:", payload.eventType);
                 break;
             }
           }
         )
         .subscribe((status, error) => {
-          console.log('Subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            console.log('Successfully subscribed to real-time changes');
+          console.log("Subscription status:", status);
+          if (status === "SUBSCRIBED") {
+            console.log("Successfully subscribed to real-time changes");
           }
           if (error) {
-            console.error('Subscription error:', error);
+            console.error("Subscription error:", error);
             // Optionally retry subscription after delay
             setTimeout(() => {
               setupRealTimeSubscription();
@@ -169,7 +187,7 @@ function Dashboard() {
 
       return channel;
     } catch (error) {
-      console.error('Error setting up real-time subscription:', error);
+      console.error("Error setting up real-time subscription:", error);
       return null;
     }
   };
@@ -178,7 +196,7 @@ function Dashboard() {
     return (
       <ErrorModal
         isOpen={true}
-        onClose={() => navigate('/admin/login')}
+        onClose={() => navigate("/admin/login")}
         customMessage="Akses ditolak. Silakan login terlebih dahulu."
         errorType="other"
       />
@@ -200,18 +218,20 @@ function Dashboard() {
   const fetchMeetings = async () => {
     try {
       setIsLoading(true);
-      
-      const { data: pertemuanData, error: pertemuanError } = await supabase
+
+      const {data: pertemuanData, error: pertemuanError} = await supabase
         .from("pertemuan")
         .select("*")
-        .order('id', { ascending: false }); // Urutkan berdasarkan waktu dibuat
+        .order("id", {ascending: false}); // Urutkan berdasarkan waktu dibuat
 
       if (pertemuanError) throw pertemuanError;
 
       setMeetings(pertemuanData || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data pertemuan');
-      console.error('Error:', err);
+      setError(
+        err instanceof Error ? err.message : "Gagal memuat data pertemuan"
+      );
+      console.error("Error:", err);
     } finally {
       setIsLoading(false);
     }
@@ -246,12 +266,14 @@ function Dashboard() {
   const handleDeleteSuccess = () => {
     // Force a refresh of meetings data
     fetchMeetings();
-    
+
     // Or manually remove from state as backup
     if (meetingToDelete) {
-      setMeetings(prev => prev.filter(meeting => meeting.id !== meetingToDelete));
+      setMeetings((prev) =>
+        prev.filter((meeting) => meeting.id !== meetingToDelete)
+      );
     }
-    
+
     // Reset the meetingToDelete state
     setMeetingToDelete(null);
   };
@@ -264,31 +286,33 @@ function Dashboard() {
     setEditError(errorMessage);
   };
 
-  // Lihat detail pertemuan 
+  // Lihat detail pertemuan
   const handleViewDetails = (meetingId: string) => {
     navigate(`/admin/pertemuan/${meetingId}`);
   };
 
   // Navigasi item
-  const navItems = [
-    { id: 'meetings', label: 'Daftar Pertemuan', icon: Calendar }
-  ];
+  const navItems = [{id: "meetings", label: "Meetings", icon: Users}];
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Overlay for mobile */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Side Navbar */}
-      <div className={`
+      <div
+        className={`
         border-r border-gray-600 fixed lg:static inset-y-0 left-0 z-30 w-64 bg-[#0c1015] shadow-lg transform transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
+        ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }
+      `}
+      >
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="p-4 border-b border-gray-600">
@@ -307,17 +331,21 @@ function Dashboard() {
             </div>
           </div>
 
-           {/* User Profile Section */}
-           <div className="flex items-center border-b border-gray-600 p-4">
+          {/* User Profile Section */}
+          <div className="flex items-center border-b border-gray-600 p-4">
             <div className="mr-3 flex h-10 w-10 items-center border border-gray-600 justify-center rounded-full text-yellow-400">
               <FiUser size={20} />
             </div>
             <div>
-              <p className="font-medium text-sky-50">{userProfile?.name || 'Nama Peserta'}</p>
-              <p className="text-sm text-gray-500">NRP: {userProfile?.nrp || '00000000'}</p>
+              <p className="font-medium text-sky-50">
+                {userProfile?.name || "Nama Peserta"}
+              </p>
+              <p className="text-sm text-gray-500">
+                NRP: {userProfile?.nrp || "00000000"}
+              </p>
             </div>
           </div>
-                        
+
           {/* Navigation */}
           <nav className="flex-1">
             <ul className="space-y-2">
@@ -327,16 +355,16 @@ function Dashboard() {
                   <li key={item.id}>
                     <button
                       onClick={() => {
-                        setActiveView(item.id as 'meetings' | 'matchmaking');
+                        setActiveView(item.id as "meetings" | "matchmaking");
                         setIsSidebarOpen(false);
                       }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-left align-center transition-colors ${
                         activeView === item.id
-                          ? 'bg-gradient-to-r from-[#0c1015] to-[#1f2038] text-gray-200 border-b border-gray-600'
-                          : 'text-white border-b border-gray-600'
+                          ? "bg-gradient-to-r from-[#0c1015] to-[#1f2038] text-gray-200 border-b border-gray-600"
+                          : "text-white border-b border-gray-600"
                       }`}
                     >
-                      <Icon size={20} className='text-gray-500'/>
+                      <Icon size={20} className="text-[#B1C2D8]" />
                       <span className="font-medium">{item.label}</span>
                     </button>
                   </li>
@@ -359,7 +387,7 @@ function Dashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-0 bg-[#0D1117]">
+      <div className="flex-1 lg:ml-0 bg-[#f5fafd]">
         {/* Top Header */}
         <div className="block md:hidden sticky top-0 z-30 bg-[#010409] shadow-sm border-b border-gray-700">
           <div className="px-4 sm:px-6 lg:px-8">
@@ -371,16 +399,15 @@ function Dashboard() {
               >
                 <Menu size={24} />
               </button>
-              
+
               <div className="lg:hidden text-center p-2">
                 <h1 className="text-xl font-bold">
                   <span className="text-white">Admin</span>{" "}
                   <span className="text-yellow-500 mx-2">|</span>
                   <span className="text-yellow-400">UKM Catur</span>
                 </h1>
-
               </div>
-              
+
               {/* <div className="w-10 lg:hidden"></div>  */}
             </div>
           </div>
@@ -388,12 +415,14 @@ function Dashboard() {
 
         {/* Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-          {activeView === 'meetings' ? (
+          {activeView === "meetings" ? (
             <div className="space-y-6">
               <div className="text-start border-b border-gray-600">
-                <h2 className="text-lg md:text-xl font-bold text-sky-50 p-2 mb-4">Daftar Pertemuan</h2>
+                <h2 className="text-lg md:text-xl font-bold text-black p-2 mb-4">
+                  Meetings
+                </h2>
               </div>
-              
+
               {meetings.length > 0 ? (
                 <div className="p-4 md:p-6 rounded-xl shadow-lg border border-gray-600">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -410,9 +439,16 @@ function Dashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8 md:py-12 bg-white rounded-xl shadow-lg">
-                  <Calendar size={48} className="mx-auto mb-3 md:mb-4 text-gray-300" />
-                  <h3 className="text-base md:text-lg font-medium text-gray-600 mb-2">Belum ada pertemuan</h3>
-                  <p className="text-gray-500 text-sm md:text-base mb-4 md:mb-6">Mulai dengan menambahkan pertemuan pertama Anda</p>
+                  <Calendar
+                    size={48}
+                    className="mx-auto mb-3 md:mb-4 text-gray-300"
+                  />
+                  <h3 className="text-base md:text-lg font-medium text-gray-600 mb-2">
+                    Belum ada pertemuan
+                  </h3>
+                  <p className="text-gray-500 text-sm md:text-base mb-4 md:mb-6">
+                    Mulai dengan menambahkan pertemuan pertama Anda
+                  </p>
                 </div>
               )}
             </div>
@@ -423,7 +459,7 @@ function Dashboard() {
       </div>
 
       {/* FAB - Floating Action Button (only shown in meetings view) */}
-      {activeView === 'meetings' && (
+      {activeView === "meetings" && (
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="fixed bottom-6 right-6 bg-yellow-400 hover:bg-yellow-500 text-black p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-10 flex items-center justify-center"
@@ -432,7 +468,7 @@ function Dashboard() {
           <Plus size={24} />
         </button>
       )}
-        
+
       {/* Add Meeting Modal */}
       <AddMeetingModal
         isOpen={isAddModalOpen}
@@ -446,8 +482,8 @@ function Dashboard() {
       />
 
       {/* Edit Meeting Modal */}
-      <EditMeetingModal 
-        isOpen={isEditModalOpen} 
+      <EditMeetingModal
+        isOpen={isEditModalOpen}
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedMeetingId(null);
