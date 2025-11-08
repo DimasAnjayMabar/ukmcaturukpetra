@@ -176,7 +176,7 @@ return (
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0c1015] to-[#1f2038] flex items-center justify-between p-6 rounded-t-xl border-b border-gray-700 flex-shrink-0">
         <h2 className="text-xl font-bold text-sky-50">
-          Tambah Pertemuan Baru
+          Add New Meeting
         </h2>
         <button
           onClick={handleClose}
@@ -279,7 +279,7 @@ return (
                 onChange={(e) => setLokasi(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg 
                 focus:ring-2 focus:ring-yellow-400 placeholder:text-gray-400"
-                placeholder="Masukkan lokasi pertemuan"
+                placeholder="Enter Meeting Location"
                 required
                 disabled={isLoading}
               />
@@ -288,7 +288,7 @@ return (
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
                 <FileText size={16} className="inline mx-1 text-slate-500" />
-                Description
+                Description (Optional)
               </label>
               <textarea
                 value={deskripsi}
@@ -296,7 +296,7 @@ return (
                 className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-lg 
                 focus:ring-2 focus:ring-yellow-400 placeholder:text-gray-400"
                 rows={3}
-                placeholder="Deskripsi pertemuan (opsional)"
+                placeholder="Enter Meeting Description"
                 disabled={isLoading}
               />
             </div>
@@ -364,7 +364,7 @@ return (
               Processing...
             </>
           ) : (
-            "Tambah Pertemuan"
+            "Add Meeting"
           )}
         </button>
       </div>
