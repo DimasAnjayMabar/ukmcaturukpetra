@@ -1,4 +1,4 @@
-// RoundsCard.tsx - FIXED: Export now works with TIE matches
+// RoundsCard.tsx - UPDATED: All content now in one card
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SwissPlayer } from "../../../utils/swiss";
@@ -566,161 +566,180 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1: return <Crown className="text-yellow-500" size={20} />;
-      case 2: return <Award className="text-gray-400" size={20} />;
+      case 2: return <Award className="text-slate-400" size={20} />;
       case 3: return <Award className="text-amber-600" size={20} />;
-      default: return <Star className="text-blue-500" size={16} />;
+      default: return <Star className="text-[#30ffb6]" size={16} />;
     }
   };
 
+  // =================================================================
+  // START OF UPDATED JSX
+  // =================================================================
   return (
-    <div className="bg-white">
-      {/* UPDATED: Always show Top 6 Ranking section */}
-      {topWinners.length > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="text-yellow-500" size={24} />
-            <h2 className="text-xl font-bold text-gray-800">Top 6 Ranking</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topWinners.map((winner) => (
-              <div key={winner.rank} className="bg-white rounded-lg p-4 shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {getRankIcon(winner.rank)}
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-lg text-gray-700">#{winner.rank}</span>
-                        <span className="font-semibold text-gray-800">{winner.name}</span>
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        Points: <span className="font-semibold text-green-600">{winner.score.toFixed(1)}</span> 
-                        {" • "}
-                        TB: <span className="font-semibold text-blue-600">{winner.tb.toFixed(1)}</span>
+    <div className="">
+      {/* This is the new main wrapper card. 
+        All content (Top 6 and Rounds) now lives inside this div.
+      */}
+      <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl p-6 border border-slate-600 shadow-lg">
+        
+        {/* UPDATED: Top 6 Ranking section (now inside the main card) */}
+        {topWinners.length > 0 && (
+          // The background/border styles were removed from this div
+          // It just provides spacing now.
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="text-yellow-400" size={24} />
+              <h2 className="text-xl font-bold text-slate-50">Top 6 Ranking</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {topWinners.map((winner) => (
+                <div key={winner.rank} className=" text-[#fefff9] bg-gradient-to-tl from-[#002680] to-transparent hover:bg-blue-700 transition-colors rounded-lg p-4 shadow-md hover:shadow-lg ">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {getRankIcon(winner.rank)}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg text-slate-50">#{winner.rank}</span>
+                          <span className="font-semibold text-slate-100">{winner.name}</span>
+                        </div>
+                        <div className="text-sm text-slate-400 mt-1">
+                          Points: <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">{winner.score.toFixed(1)}</span> 
+                          {" • "}
+                          TB: <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#568eff] to-[#a0c3ff]">{winner.tb.toFixed(1)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+            {topWinners.length < 6 && (
+              <p className="text-center text-gray-500 text-sm mt-4">
+                Total pemain: {players.length} (menampilkan {topWinners.length} teratas)
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* MOVED: This is the "Rest of the component" 
+          It is now INSIDE the main dark card, after the Top 6 section.
+        */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-50">Rounds</h2> {/* Text color changed to be visible on dark bg */}
+            {maxRounds !== null && (
+              <p className="text-sm text-slate-300"> {/* Text color changed */}
+                {totalRounds} / {maxRounds} rounds
+                {totalRounds >= maxRounds && (
+                  <span className="ml-2 text-red-500 font-semibold">(MAX)</span> /* Color updated */
+                )}
+                {totalRounds < maxRounds && getNextAvailableRoundNumber() && (
+                  <span className="ml-2 text-blue-400 text-xs"> {/* Color updated */}
+                    (Next: Round {getNextAvailableRoundNumber()})
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            {maxRounds !== null && totalRounds >= maxRounds && (
+              <button
+                onClick={exportFinalStandings}
+                disabled={exporting}
+                className="flex items-center gap-2 px-3 py-2 bg-gradient-to-tl from-[#01b82c] to-[#29ffb8] text-[#fefff9] rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {exporting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Exporting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={18} />
+                    <span>Export</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowMaxRoundsModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg transition-colors"
+            >
+              <Settings size={18} />
+              <span>Set Max Rounds</span>
+            </button>
+
+            <button
+              onClick={addRound}
+              disabled={!canAddRound() || loading}
+              className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition"
+            >
+              {getAddButtonText()}
+            </button>
+          </div>
+        </div>
+
+        {maxRounds === null && (
+          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg"> {/* Slightly adjusted colors for dark mode context */}
+            <p className="text-yellow-900 text-sm">
+              <strong>Perhatian:</strong> Harap set max rounds terlebih dahulu sebelum menambah round baru.
+            </p>
+          </div>
+        )}
+
+        {maxRounds !== null && totalRounds >= maxRounds && (
+          <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg"> 
+            <p className="text-green-900 text-sm">
+              <strong>Turnamen Selesai:</strong> Sudah mencapai batas maksimum {maxRounds} rounds. Klik "Export Final Standings" untuk hasil akhir.
+            </p>
+          </div>
+        )}
+
+        {rounds.length === 0 ? (
+          <p className="text-gray-400 italic text-center">Belum ada round tercipta</p> 
+        ) : (
+          <div className="grid gap-3">
+            {rounds.map((round) => (
+              <div
+                key={round.id}
+                // Using a lighter, slightly transparent blue for the round items
+                className="rounded-lg p-4 bg-blue-900 bg-opacity-40 hover:bg-opacity-60 transition shadow-sm border border-blue-700"
+              >
+                <div className="flex justify-between items-center">
+                  <div 
+                    className="cursor-pointer flex-1"
+                    onClick={() => handleViewPairings(round.id)}
+                  >
+                    <h3 className="font-semibold text-blue-100">{round.name}</h3>
+                    <span className="text-sm text-blue-300">{round.date}</span>
+                  </div>
+                  <button
+                    onClick={() => deleteRound(round.id, round.name, round.roundNumber)}
+                    disabled={loading}
+                    className="ml-4 px-3 py-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white rounded-lg transition text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div 
+                  className="text-sm text-blue-200 mt-2 cursor-pointer" // Color updated
+                  onClick={() => handleViewPairings(round.id)}
+                >
+                  Pairings: (click to view and update results)
+                </div>
               </div>
             ))}
           </div>
-          {topWinners.length < 6 && (
-            <p className="text-center text-gray-500 text-sm mt-4">
-              Total pemain: {players.length} (menampilkan {topWinners.length} teratas)
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div> 
+      {/* End of the new main wrapper card */}
 
-      {/* Rest of the component remains the same */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-semibold">Rounds</h2>
-          {maxRounds !== null && (
-            <p className="text-sm text-gray-600">
-              {totalRounds} / {maxRounds} rounds
-              {totalRounds >= maxRounds && (
-                <span className="ml-2 text-red-600 font-semibold">(MAX)</span>
-              )}
-              {totalRounds < maxRounds && getNextAvailableRoundNumber() && (
-                <span className="ml-2 text-blue-600 text-xs">
-                  (Next: Round {getNextAvailableRoundNumber()})
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-        
-        <div className="flex gap-2">
-          {maxRounds !== null && totalRounds >= maxRounds && (
-            <button
-              onClick={exportFinalStandings}
-              disabled={exporting}
-              className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            >
-              {exporting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Exporting...</span>
-                </>
-              ) : (
-                <>
-                  <Download size={18} />
-                  <span>Export Final Standings</span>
-                </>
-              )}
-            </button>
-          )}
 
-          <button
-            onClick={() => setShowMaxRoundsModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Settings size={18} />
-            <span>Set Max Rounds</span>
-          </button>
-
-          <button
-            onClick={addRound}
-            disabled={!canAddRound() || loading}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition"
-          >
-            {getAddButtonText()}
-          </button>
-        </div>
-      </div>
-
-      {maxRounds === null && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-800 text-sm">
-            <strong>Perhatian:</strong> Harap set max rounds terlebih dahulu sebelum menambah round baru.
-          </p>
-        </div>
-      )}
-
-      {maxRounds !== null && totalRounds >= maxRounds && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 text-sm">
-            <strong>Turnamen Selesai:</strong> Sudah mencapai batas maksimum {maxRounds} rounds. Klik "Export Final Standings" untuk hasil akhir.
-          </p>
-        </div>
-      )}
-
-      {rounds.length === 0 ? (
-        <p className="text-gray-500 italic text-center">Belum ada round tercipta</p>
-      ) : (
-        <div className="grid gap-3">
-          {rounds.map((round) => (
-            <div
-              key={round.id}
-              className="rounded-lg p-4 bg-blue-100 hover:bg-blue-200 transition shadow-sm"
-            >
-              <div className="flex justify-between items-center">
-                <div 
-                  className="cursor-pointer flex-1"
-                  onClick={() => handleViewPairings(round.id)}
-                >
-                  <h3 className="font-semibold text-blue-800">{round.name}</h3>
-                  <span className="text-sm text-blue-700">{round.date}</span>
-                </div>
-                <button
-                  onClick={() => deleteRound(round.id, round.name, round.roundNumber)}
-                  disabled={loading}
-                  className="ml-4 px-3 py-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white rounded-lg transition text-sm"
-                >
-                  Delete
-                </button>
-              </div>
-              <div 
-                className="text-sm text-blue-800 mt-2 cursor-pointer"
-                onClick={() => handleViewPairings(round.id)}
-              >
-                Pairings: (click to view and update results)
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
+      {/* The Modal stays OUTSIDE the main card, at the root of the component.
+        This is correct so it can overlay everything.
+      */}
       {showMaxRoundsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -766,4 +785,7 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       )}
     </div>
   );
+  // =================================================================
+  // END OF UPDATED JSX
+  // =================================================================
 }

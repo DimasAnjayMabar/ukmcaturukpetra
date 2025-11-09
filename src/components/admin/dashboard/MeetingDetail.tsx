@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import React, {useState, useEffect, useCallback} from "react";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  useLocation,
+} from "react-router-dom";
 import {
   ArrowLeft,
   Calendar,
@@ -18,26 +23,28 @@ import {
   Menu,
   Trash2,
 } from "lucide-react";
-import { Pertemuan, Kehadiran, TournamentMatch, RegistOut } from "../../../types";
-import { CheckInData } from "./CheckInData";
-import { CheckOutData } from "./CheckOutData";
+import {Pertemuan, Kehadiran, TournamentMatch, RegistOut} from "../../../types";
+import {CheckInData} from "./CheckInData";
+import {CheckOutData} from "./CheckOutData";
 // import { MatchRecap } from "./MatchRecap";
-import { supabase } from "../../../db_client/client";
-import { ErrorModal } from "../../error_modal/ErrorModal";
-import { OpenRegistInScannerCamera } from "./OpenRegistInScannerCamera";
-import { OpenRegistOutScannerCamera } from "./OpenRegistOutScannerCamera";
+import {supabase} from "../../../db_client/client";
+import {ErrorModal} from "../../error_modal/ErrorModal";
+import {OpenRegistInScannerCamera} from "./OpenRegistInScannerCamera";
+import {OpenRegistOutScannerCamera} from "./OpenRegistOutScannerCamera";
 import * as XLSX from "xlsx";
 import RoundsCard from "./RoundsCard";
-import { useAdminLayout } from "../layout/AdminLayoutContext";
+import {useAdminLayout} from "../layout/AdminLayoutContext";
 
 interface LocationState {
-  activeTab?: 'attendance' | 'matches';
+  activeTab?: "attendance" | "matches";
 }
 
 export const MeetingDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const {id} = useParams<{id: string}>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"attendance" | "matches">("attendance");
+  const [activeTab, setActiveTab] = useState<"attendance" | "matches">(
+    "attendance"
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [realtimeConnected, setRealtimeConnected] = useState(false);
@@ -51,41 +58,47 @@ export const MeetingDetail: React.FC = () => {
     | null
   >(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
-  const [users, setUsers] = useState<{ [key: string]: { name: string; nrp?: string } }>({});
-  const [showRegistInScannerModal, setShowRegistInScannerModal] = useState(false);
-  const [showRegistOutScannerModal, setShowRegistOutScannerModal] = useState(false);
+  const [users, setUsers] = useState<{
+    [key: string]: {name: string; nrp?: string};
+  }>({});
+  const [showRegistInScannerModal, setShowRegistInScannerModal] =
+    useState(false);
+  const [showRegistOutScannerModal, setShowRegistOutScannerModal] =
+    useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
-  const [bulkActionType, setBulkActionType] = useState<"insert" | "delete" | null>(null);
+  const [bulkActionType, setBulkActionType] = useState<
+    "insert" | "delete" | null
+  >(null);
   const [processingBulkAction, setProcessingBulkAction] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const location = useLocation();
   const locationState = location.state as LocationState;
   const [searchParams, setSearchParams] = useSearchParams();
-  const { toggleSidebar } = useAdminLayout();
+  const {toggleSidebar} = useAdminLayout();
 
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
+    const tabFromUrl = searchParams.get("tab");
     const tabFromState = (location.state as LocationState)?.activeTab;
-    
+
     // Priority: URL params > Location state > Default
-    if (tabFromUrl === 'matches' && meeting?.is_tournament) {
-      setActiveTab('matches');
-    } else if (tabFromState === 'matches' && meeting?.is_tournament) {
-      setActiveTab('matches');
+    if (tabFromUrl === "matches" && meeting?.is_tournament) {
+      setActiveTab("matches");
+    } else if (tabFromState === "matches" && meeting?.is_tournament) {
+      setActiveTab("matches");
       // Update URL untuk persist pada refresh
-      setSearchParams({ tab: 'matches' });
-    } else if (tabFromUrl === 'attendance') {
-      setActiveTab('attendance');
+      setSearchParams({tab: "matches"});
+    } else if (tabFromUrl === "attendance") {
+      setActiveTab("attendance");
     }
   }, [searchParams, location.state, meeting?.is_tournament, setSearchParams]);
 
   const handleTabChange = (tab: "attendance" | "matches") => {
     setActiveTab(tab);
-    if (tab === 'matches') {
-      setSearchParams({ tab: 'matches' });
+    if (tab === "matches") {
+      setSearchParams({tab: "matches"});
     } else {
-      setSearchParams({ tab: 'attendance' });
+      setSearchParams({tab: "attendance"});
     }
   };
 
@@ -94,14 +107,16 @@ export const MeetingDetail: React.FC = () => {
     setErrorMsg("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: {session},
+      } = await supabase.auth.getSession();
       if (!session?.user?.email) {
         setErrorMsg("Anda belum login.");
         return;
       }
 
       // Re-authenticate password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const {error: signInError} = await supabase.auth.signInWithPassword({
         email: session.user.email,
         password: adminPassword,
       });
@@ -112,7 +127,7 @@ export const MeetingDetail: React.FC = () => {
       }
 
       // Ambil semua user role 'peserta'
-      const { data: pesertaList, error: userError } = await supabase
+      const {data: pesertaList, error: userError} = await supabase
         .from("user_profile")
         .select("id")
         .eq("role", "peserta");
@@ -133,8 +148,8 @@ export const MeetingDetail: React.FC = () => {
 
       // Insert batch (gunakan upsert untuk cegah duplikasi)
       await supabase
-      .from("kehadiran")
-      .insert(insertData, { ignoreDuplicates: true });
+        .from("kehadiran")
+        .insert(insertData, {ignoreDuplicates: true});
 
       await refreshRegistInAttendance();
       setShowPasswordModal(false);
@@ -153,14 +168,16 @@ export const MeetingDetail: React.FC = () => {
     setErrorMsg("");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: {session},
+      } = await supabase.auth.getSession();
       if (!session?.user?.email) {
         setErrorMsg("Anda belum login.");
         return;
       }
 
       // Re-authenticate password
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const {error: signInError} = await supabase.auth.signInWithPassword({
         email: session.user.email,
         password: adminPassword,
       });
@@ -171,7 +188,7 @@ export const MeetingDetail: React.FC = () => {
       }
 
       // Ambil semua user role 'peserta'
-      const { data: pesertaList, error: userError } = await supabase
+      const {data: pesertaList, error: userError} = await supabase
         .from("user_profile")
         .select("id")
         .eq("role", "peserta");
@@ -185,7 +202,7 @@ export const MeetingDetail: React.FC = () => {
       }
 
       // Hapus semua kehadiran peserta untuk pertemuan ini
-      const { error: deleteError } = await supabase
+      const {error: deleteError} = await supabase
         .from("kehadiran")
         .delete()
         .eq("pertemuan_id", id)
@@ -208,7 +225,7 @@ export const MeetingDetail: React.FC = () => {
   const fetchRegistInData = useCallback(
     async (meetingId: string) => {
       try {
-        const { data: attendanceData, error: attendanceError } = await supabase
+        const {data: attendanceData, error: attendanceError} = await supabase
           .from("kehadiran")
           .select("*")
           .eq("pertemuan_id", meetingId);
@@ -217,10 +234,10 @@ export const MeetingDetail: React.FC = () => {
 
         const userIds = attendanceData?.map((a) => a.user_id) || [];
         const missingUserIds = userIds.filter((userId) => !users[userId]);
-        let newUsersMap: { [key: string]: { name: string } } = {};
+        let newUsersMap: {[key: string]: {name: string}} = {};
 
         if (missingUserIds.length > 0) {
-          const { data: userData, error: userError } = await supabase
+          const {data: userData, error: userError} = await supabase
             .from("user_profile")
             .select("id, name, nrp")
             .in("id", missingUserIds);
@@ -229,11 +246,11 @@ export const MeetingDetail: React.FC = () => {
 
           newUsersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name, nrp: user.nrp };
+              acc[user.id] = {name: user.name, nrp: user.nrp};
               return acc;
-            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
+            }, {} as {[key: string]: {name: string; nrp?: string}}) || {};
 
-          setUsers((prevUsers) => ({ ...prevUsers, ...newUsersMap }));
+          setUsers((prevUsers) => ({...prevUsers, ...newUsersMap}));
         }
 
         return attendanceData || [];
@@ -248,7 +265,7 @@ export const MeetingDetail: React.FC = () => {
   const fetchRegistOutData = useCallback(
     async (meetingId: string) => {
       try {
-        const { data: registOutData, error: registOutError } = await supabase
+        const {data: registOutData, error: registOutError} = await supabase
           .from("regist_out")
           .select("*")
           .eq("pertemuan_id", meetingId);
@@ -257,10 +274,10 @@ export const MeetingDetail: React.FC = () => {
 
         const userIds = registOutData?.map((a) => a.user_id) || [];
         const missingUserIds = userIds.filter((userId) => !users[userId]);
-        let newUsersMap: { [key: string]: { name: string } } = {};
+        let newUsersMap: {[key: string]: {name: string}} = {};
 
         if (missingUserIds.length > 0) {
-          const { data: userData, error: userError } = await supabase
+          const {data: userData, error: userError} = await supabase
             .from("user_profile")
             .select("id, name, nrp")
             .in("id", missingUserIds);
@@ -269,11 +286,11 @@ export const MeetingDetail: React.FC = () => {
 
           newUsersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name, nrp: user.nrp };
+              acc[user.id] = {name: user.name, nrp: user.nrp};
               return acc;
-            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
+            }, {} as {[key: string]: {name: string; nrp?: string}}) || {};
 
-          setUsers((prevUsers) => ({ ...prevUsers, ...newUsersMap }));
+          setUsers((prevUsers) => ({...prevUsers, ...newUsersMap}));
         }
 
         return registOutData || [];
@@ -332,11 +349,11 @@ export const MeetingDetail: React.FC = () => {
   const fetchTournamentMatches = useCallback(
     async (meetingId: string) => {
       try {
-        const { data: tournamentData, error: tournamentError } = await supabase
+        const {data: tournamentData, error: tournamentError} = await supabase
           .from("turnamen")
           .select("*")
           .eq("pertemuan_id", meetingId)
-          .order("match_ke", { ascending: true });
+          .order("match_ke", {ascending: true});
 
         if (tournamentError) throw tournamentError;
 
@@ -348,26 +365,27 @@ export const MeetingDetail: React.FC = () => {
         ];
 
         const missingPlayerIds = allPlayerIds.filter((uid) => !users[uid]);
-        let additionalUsersMap: { [key: string]: { name: string } } = {};
+        let additionalUsersMap: {[key: string]: {name: string}} = {};
 
         if (missingPlayerIds.length > 0) {
-          const { data: additionalUserData, error: additionalUserError } = await supabase
-            .from("user_profile")
-            .select("id, name, nrp")
-            .in("id", missingPlayerIds);
+          const {data: additionalUserData, error: additionalUserError} =
+            await supabase
+              .from("user_profile")
+              .select("id, name, nrp")
+              .in("id", missingPlayerIds);
 
           if (additionalUserError) throw additionalUserError;
 
           additionalUsersMap =
             additionalUserData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name, nrp: user.nrp };
+              acc[user.id] = {name: user.name, nrp: user.nrp};
               return acc;
-            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
+            }, {} as {[key: string]: {name: string; nrp?: string}}) || {};
 
-          setUsers((prev) => ({ ...prev, ...additionalUsersMap }));
+          setUsers((prev) => ({...prev, ...additionalUsersMap}));
         }
 
-        const allUsersMap = { ...users, ...additionalUsersMap };
+        const allUsersMap = {...users, ...additionalUsersMap};
 
         const matchesData =
           tournamentData?.map((match) => ({
@@ -429,15 +447,17 @@ export const MeetingDetail: React.FC = () => {
 
     // Set column widths
     const colWidths = [
-      { wch: 5 },  // No
-      { wch: 30 }, // Nama
-      { wch: 40 }, // User ID
-      { wch: 20 }, // Waktu Check In
-      { wch: 15 }, // Status
+      {wch: 5}, // No
+      {wch: 30}, // Nama
+      {wch: 40}, // User ID
+      {wch: 20}, // Waktu Check In
+      {wch: 15}, // Status
     ];
     ws["!cols"] = colWidths;
 
-    const fileName = `Regist_In_${meeting.judul_pertemuan}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const fileName = `Regist_In_${meeting.judul_pertemuan}_${
+      new Date().toISOString().split("T")[0]
+    }.xlsx`;
     XLSX.writeFile(wb, fileName);
   }, [meeting, users]);
 
@@ -462,15 +482,17 @@ export const MeetingDetail: React.FC = () => {
 
     // Set column widths
     const colWidths = [
-      { wch: 5 },  // No
-      { wch: 30 }, // Nama
-      { wch: 40 }, // User ID
-      { wch: 20 }, // Waktu Check Out
-      { wch: 15 }, // Status
+      {wch: 5}, // No
+      {wch: 30}, // Nama
+      {wch: 40}, // User ID
+      {wch: 20}, // Waktu Check Out
+      {wch: 15}, // Status
     ];
     ws["!cols"] = colWidths;
 
-    const fileName = `Regist_Out_${meeting.judul_pertemuan}_${new Date().toISOString().split("T")[0]}.xlsx`;
+    const fileName = `Regist_Out_${meeting.judul_pertemuan}_${
+      new Date().toISOString().split("T")[0]
+    }.xlsx`;
     XLSX.writeFile(wb, fileName);
   }, [meeting, users]);
 
@@ -560,14 +582,17 @@ export const MeetingDetail: React.FC = () => {
       try {
         setLoading(true);
 
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        const {
+          data: {session},
+          error: authError,
+        } = await supabase.auth.getSession();
 
         if (!session || authError) {
           setIsUnauthorized(true);
           return;
         }
 
-        const { data: meetingData, error: meetingError } = await supabase
+        const {data: meetingData, error: meetingError} = await supabase
           .from("pertemuan")
           .select("*")
           .eq("id", id)
@@ -578,7 +603,7 @@ export const MeetingDetail: React.FC = () => {
         }
 
         // Fetch regist in data
-        const { data: attendanceData, error: attendanceError } = await supabase
+        const {data: attendanceData, error: attendanceError} = await supabase
           .from("kehadiran")
           .select("*")
           .eq("pertemuan_id", id);
@@ -586,7 +611,7 @@ export const MeetingDetail: React.FC = () => {
         if (attendanceError) throw attendanceError;
 
         // Fetch regist out data
-        const { data: registOutData, error: registOutError } = await supabase
+        const {data: registOutData, error: registOutError} = await supabase
           .from("regist_out")
           .select("*")
           .eq("pertemuan_id", id);
@@ -600,9 +625,9 @@ export const MeetingDetail: React.FC = () => {
         ];
         const uniqueUserIds = [...new Set(allUserIds)];
 
-        let usersMap: { [key: string]: { name: string; nrp?: string } } = {};
+        let usersMap: {[key: string]: {name: string; nrp?: string}} = {};
         if (uniqueUserIds.length > 0) {
-          const { data: userData, error: userError } = await supabase
+          const {data: userData, error: userError} = await supabase
             .from("user_profile")
             .select("id, name, nrp")
             .in("id", uniqueUserIds);
@@ -611,9 +636,9 @@ export const MeetingDetail: React.FC = () => {
 
           usersMap =
             userData?.reduce((acc, user) => {
-              acc[user.id] = { name: user.name, nrp: user.nrp };
+              acc[user.id] = {name: user.name, nrp: user.nrp};
               return acc;
-            }, {} as { [key: string]: { name: string; nrp?: string } }) || {};
+            }, {} as {[key: string]: {name: string; nrp?: string}}) || {};
         }
 
         setUsers(usersMap);
@@ -632,7 +657,7 @@ export const MeetingDetail: React.FC = () => {
         });
       } catch (error) {
         console.error("Error fetching meeting:", error);
-        navigate("/admin/dashboard", { replace: true });
+        navigate("/admin/dashboard", {replace: true});
       } finally {
         setLoading(false);
       }
@@ -703,8 +728,10 @@ export const MeetingDetail: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {isUnauthorized ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-lg p-6">
-             <p className="text-gray-600 font-semibold text-lg">Access Denied</p>
-             <p className="text-gray-500 mt-2">Try logging in first to access this page.</p>
+            <p className="text-gray-600 font-semibold text-lg">Access Denied</p>
+            <p className="text-gray-500 mt-2">
+              Try logging in first to access this page.
+            </p>
           </div>
         ) : loading ? (
           <div className="text-center py-12">
@@ -713,8 +740,13 @@ export const MeetingDetail: React.FC = () => {
           </div>
         ) : !meeting ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-lg p-6">
-            <p className="text-gray-600 font-semibold text-lg">Meeting Not Found</p>
-            <p className="text-gray-500 mt-2">The meeting you are looking for does not exist or could not be loaded.</p>
+            <p className="text-gray-600 font-semibold text-lg">
+              Meeting Not Found
+            </p>
+            <p className="text-gray-500 mt-2">
+              The meeting you are looking for does not exist or could not be
+              loaded.
+            </p>
           </div>
         ) : (
           /* This <></> fragment contains all your existing page content */
@@ -722,85 +754,98 @@ export const MeetingDetail: React.FC = () => {
             {/* MOVED Constants: Define them only AFTER we know meeting is not null */}
             {(() => {
               const waktuPertemuan = `${meeting.waktu_mulai} - ${meeting.waktu_selesai}`;
-              const registInCount = meeting.attendees.filter((a) => a.isAttending).length;
-              const registOutCount = meeting.registOutData.filter((a) => a.isRegistedOut).length;
-              
+              const registInCount = meeting.attendees.filter(
+                (a) => a.isAttending
+              ).length;
+              const registOutCount = meeting.registOutData.filter(
+                (a) => a.isRegistedOut
+              ).length;
+
               return (
                 <>
-                {/* Meeting Info */}
-                <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl shadow-lg p-6 mb-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="flex items-center text-sky-50">
-                      <Calendar size={20} className="mr-3 text-[#178be4]" />
-                      <div>
-                        <p className="text-sm text-slate-400">Date</p>
-                        <p className="font-medium">
-                          {new Date(meeting.tanggal).toLocaleDateString()}
-                        </p>
+                  {/* Meeting Info */}
+                  <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl shadow-lg p-6 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="flex items-center text-sky-50">
+                        <Calendar size={20} className="mr-3 text-[#178be4]" />
+                        <div>
+                          <p className="text-sm text-slate-400">Date</p>
+                          <p className="font-medium">
+                            {new Date(meeting.tanggal).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sky-50">
+                        <Clock size={20} className="mr-3 text-[#0bde7b]" />
+                        <div>
+                          <p className="text-sm text-slate-400">Time</p>
+                          <p className="font-medium">{waktuPertemuan}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sky-50">
+                        <MapPin size={20} className="mr-3 text-[#FE0081]" />
+                        <div>
+                          <p className="text-sm text-slate-400">Location</p>
+                          <p className="font-medium">{meeting.lokasi}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center text-sky-50">
+                        <Users size={20} className="mr-3 text-[#c55efd]" />
+                        <div>
+                          <p className="text-sm text-slate-400">Participants</p>
+                          <p className="font-medium">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">
+                              {registInCount}
+                            </span>{" "}
+                            entries /
+                            <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#f93434] to-[#ff76a4]">
+                              {" "}
+                              {registOutCount}
+                            </span>{" "}
+                            exits
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center text-sky-50">
-                      <Clock size={20} className="mr-3 text-[#0bde7b]" />
-                      <div>
-                        <p className="text-sm text-slate-400">Time</p>
-                        <p className="font-medium">{waktuPertemuan}</p>
+                    {meeting.deskripsi && (
+                      <div className="mt-4 pt-4 border-t border-slate-600">
+                        <p className="text-gray-200">{meeting.deskripsi}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center text-sky-50">
-                      <MapPin size={20} className="mr-3 text-[#FE0081]" />
-                      <div>
-                        <p className="text-sm text-slate-400">Location</p>
-                        <p className="font-medium">{meeting.lokasi}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center text-sky-50">
-                      <Users size={20} className="mr-3 text-[#c55efd]" />
-                      <div>
-                        <p className="text-sm text-slate-400">Participants</p>
-                        <p className="font-medium">
-                          <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">{registInCount}</span> entries / 
-                          <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#f93434] to-[#ff76a4]"> {registOutCount}</span> exits
-                        </p>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                  {meeting.deskripsi && (
-                    <div className="mt-4 pt-4 border-t border-slate-600">
-                      <p className="text-gray-200">{meeting.deskripsi}</p>
-                    </div>
-                  )}
-                </div>
 
                   {/* Tabs untuk Tournament */}
                   {meeting.is_tournament && (
-                    <div className="bg-white rounded-xl shadow-lg mb-8">
-                      <div className="border-b border-gray-200">
-                        <nav className="flex w-full">
-                          <button
-                            onClick={() => handleTabChange("attendance")}
-                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                              activeTab === "attendance"
-                                ? "border-blue-500 text-blue-600 bg-blue-50"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
-                          >
-                            <UserCheck size={18} />
-                            Attendance
-                          </button>
-                          <button
-                            onClick={() => handleTabChange("matches")}
-                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                              activeTab === "matches"
-                                ? "border-blue-500 text-blue-600 bg-blue-50"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                            }`}
-                          >
-                            <Trophy size={18} />
-                            Matches
-                          </button>
-                        </nav>
-                      </div>
-                    </div>
+                  <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-full shadow-lg mb-8 max-w-xl mx-auto p-1">
+                    <nav className="flex w-full">
+                      <button
+                        onClick={() => handleTabChange("attendance")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-l-full transition-all
+                          ${
+                            activeTab === "attendance"
+                              ? "bg-gradient-to-tl from-[#ffda21] to-[#f6fb67] text-[#0b2241] shadow-md"
+                              : "text-gray-400 hover:text-white hover:bg-blue-950/30"
+                          }`}
+                      >
+                        <UserCheck size={18} />
+                        Attendance
+                      </button>
+
+                      <button
+                        onClick={() => handleTabChange("matches")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-sm font-medium rounded-r-full transition-all
+                          ${
+                            activeTab === "matches"
+                              ? "bg-gradient-to-tl from-[#ffda21] to-[#f6fb67] text-[#0b2241] shadow-md"
+                              : "text-gray-400 hover:text-white hover:bg-blue-950/30"
+                          }`}
+                      >
+                        <Trophy size={18} />
+                        Matches
+                      </button>
+                    </nav>
+                  </div>
+
                   )}
 
                   {/* Dual Pane Layout untuk Attendance */}
@@ -812,7 +857,9 @@ export const MeetingDetail: React.FC = () => {
                           <div className="flex items-center justify-between gap-2 overflow-x-auto">
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <LogIn size={20} className="text-[#0bde7b]" />
-                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">Regist In</h3>
+                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">
+                                Regist In
+                              </h3>
                             </div>
 
                             <div className="flex items-center gap-2 flex-shrink-0">
@@ -835,22 +882,21 @@ export const MeetingDetail: React.FC = () => {
                                   setBulkActionType("insert");
                                   setShowPasswordModal(true);
                                 }}
-                                className="flex items-center p-2 bg-gradient-to-tl from-[#2700a8] to-[#d685ff] text-[#fefff9] rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                                className="flex items-center p-2 border border-[#b625ff] text-[#fefff9] bg-opacity bg-gradient-to-tl from-[#2700a8] to-transparent rounded-lg hover:bg-purple-700 transition-colors text-sm"
                               >
                                 <UserCheck size={16} />
-                                </button>
+                              </button>
                               <button
                                 onClick={() => {
                                   setBulkActionType("delete");
                                   setShowPasswordModal(true);
                                 }}
-                                className="flex items-center p-2 bg-gradient-to-tl from-[#da0000] to-[#ff4b87] text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                                className="flex items-center p-2 border border-[#da0000] text-[#fefff9] bg-gradient-to-tl from-[#850000] to-transparent rounded-lg hover:bg-red-700 transition-colors text-sm"
                               >
                                 <Trash2 size={16} />
                               </button>
                             </div>
                           </div>
-
                         </div>
                         <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
                           <CheckInData
@@ -868,7 +914,9 @@ export const MeetingDetail: React.FC = () => {
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2">
                               <LogOut size={20} className="text-[#ff7777]" />
-                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#ff3d3d] to-[#ffa5c3]">Regist Out</h3>
+                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#ff3d3d] to-[#ffa5c3]">
+                                Regist Out
+                              </h3>
                             </div>
                             <div className="flex items-center gap-2">
                               <button
@@ -902,13 +950,8 @@ export const MeetingDetail: React.FC = () => {
 
                   {/* Match Recap untuk Tournament */}
                   {meeting.is_tournament && activeTab === "matches" && (
-                    <div className="bg-[#f5fafd] rounded-xl shadow-lg border border-gray-600">
-                      <div className="p-6">
-                        {/* FIXED: Added w-full wrapper */}
-                        <div className="w-full">
-                          <RoundsCard pertemuanId={id || ""} />
-                        </div>
-                      </div>
+                    <div className="w-full">
+                      <RoundsCard pertemuanId={id || ""} />
                     </div>
                   )}
                 </>
@@ -941,7 +984,9 @@ export const MeetingDetail: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 w-80">
             <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">
-              {bulkActionType === "insert" ? "Check In All Participants" : "Delete All Participants"}
+              {bulkActionType === "insert"
+                ? "Check In All Participants"
+                : "Delete All Participants"}
             </h3>
             <p className="text-sm text-gray-600 text-center mb-4">
               Enter admin password to confirm.
@@ -953,7 +998,11 @@ export const MeetingDetail: React.FC = () => {
               onChange={(e) => setAdminPassword(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:outline-none"
             />
-            {errorMsg && <p className="text-red-500 text-sm mb-3 text-center">{errorMsg}</p>}
+            {errorMsg && (
+              <p className="text-red-500 text-sm mb-3 text-center">
+                {errorMsg}
+              </p>
+            )}
             <div className="flex justify-center gap-2">
               <button
                 onClick={() => {
@@ -968,7 +1017,9 @@ export const MeetingDetail: React.FC = () => {
               </button>
               <button
                 onClick={() =>
-                  bulkActionType === "insert" ? handleBulkInsertAll() : handleBulkDeleteAll()
+                  bulkActionType === "insert"
+                    ? handleBulkInsertAll()
+                    : handleBulkDeleteAll()
                 }
                 className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
                   bulkActionType === "insert"

@@ -98,13 +98,12 @@ export const CheckInData: React.FC<AttendanceDataProps> = ({
       setSortOrder(prevOrder => prevOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortType(newSortType);
-      setSortOrder('asc'); // <-- Kept your change
+      setSortOrder('asc');
     }
   };
 
   return (
     <div className="w-full">
-      {/* Header - Now a button to toggle collapse */}
       <button
         className="flex items-center justify-between w-full mb-4 group"
         onClick={() => setIsOpen(!isOpen)}
@@ -125,9 +124,6 @@ export const CheckInData: React.FC<AttendanceDataProps> = ({
       <div 
         className={`transition-[max-height] duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
       >
-        {/* FIX: Changed to flex-row and gap-2 for small screens.
-          On sm: screens and up, it becomes flex-row with a larger gap.
-        */}
         <div className="flex flex-row gap-2 mb-4">
           {/* Search Bar */}
           <div className="relative flex-1">
@@ -152,7 +148,6 @@ export const CheckInData: React.FC<AttendanceDataProps> = ({
               }`}
             >
               {sortType === 'time' && sortOrder === 'asc' ? <ClockArrowUp size={16} /> : <ClockArrowDown size={16} />}
-              {/* FIX: Hide text on small screens */}
               <span className="hidden sm:inline">Sort by Time</span>
             </button>
             <button
@@ -164,14 +159,11 @@ export const CheckInData: React.FC<AttendanceDataProps> = ({
               }`}
             >
               {sortType === 'alpha' && sortOrder === 'asc' ? <ArrowDownAZ size={16} /> : <ArrowUpAZ size={16} />}
-              {/* FIX: Hide text on small screens */}
               <span className="hidden sm:inline">Sort A-Z</span>
             </button>
           </div>
         </div>
 
-        {/* FIX: Added padding-right (pr-2) and scrollbar styling classes.
-        */}
         <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
           {sortedAndFilteredAttendees.map((attendee) => (
             <div
