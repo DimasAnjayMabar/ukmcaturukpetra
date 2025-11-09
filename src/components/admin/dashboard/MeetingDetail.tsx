@@ -15,6 +15,8 @@ import {
   LogIn,
   LogOut,
   Download,
+  Menu,
+  Trash2,
 } from "lucide-react";
 import { Pertemuan, Kehadiran, TournamentMatch, RegistOut } from "../../../types";
 import { CheckInData } from "./CheckInData";
@@ -26,6 +28,7 @@ import { OpenRegistInScannerCamera } from "./OpenRegistInScannerCamera";
 import { OpenRegistOutScannerCamera } from "./OpenRegistOutScannerCamera";
 import * as XLSX from "xlsx";
 import RoundsCard from "./RoundsCard";
+import { useAdminLayout } from "../layout/AdminLayoutContext";
 
 interface LocationState {
   activeTab?: 'attendance' | 'matches';
@@ -59,7 +62,7 @@ export const MeetingDetail: React.FC = () => {
   const location = useLocation();
   const locationState = location.state as LocationState;
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const { toggleSidebar } = useAdminLayout();
 
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -638,40 +641,6 @@ export const MeetingDetail: React.FC = () => {
     fetchMeetingDetail();
   }, [id, navigate]);
 
-  if (isUnauthorized) {
-    return (
-      <ErrorModal
-        isOpen={true}
-        onClose={() => navigate("/admin/login")}
-        customMessage="Akses ditolak. Silakan login terlebih dahulu."
-        errorType="other"
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0a0007] to-[#0f1028] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          {/* <p className="text-gray-600">Loading...</p> */}
-        </div>
-      </div>
-    );
-  }
-
-  if (!meeting) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Meeting not found</p>
-      </div>
-    );
-  }
-
-  const waktuPertemuan = `${meeting.waktu_mulai} - ${meeting.waktu_selesai}`;
-  const registInCount = meeting.attendees.filter((a) => a.isAttending).length;
-  const registOutCount = meeting.registOutData.filter((a) => a.isRegistedOut).length;
-
   const handleBack = () => {
     navigate("/admin/dashboard");
   };
@@ -683,25 +652,31 @@ export const MeetingDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 lg:ml-0 bg-[#f5fafd]">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-white shadow-sm border-b border-gray-200">
+      <div className="sticky top-0 z-30 bg-gradient-to-r from-[#0c1015] to-[#0f1028] shadow-lg border-b border-slate-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4 py-4">
+          <div className="flex items-center gap-4 py-[1.125rem]">
+            <button
+              onClick={toggleSidebar}
+              className="p-2 rounded-lg text-yellow-400 hover:border-slate-500 lg:hidden"
+              aria-label="Toggle sidebar"
+            >
+              <Menu size={24} />
+            </button>
             <button
               onClick={handleBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+              className="flex items-center gap-2 text-yellow-400 hover:text-yellow-500 transition-colors"
             >
               <ArrowLeft size={20} />
-              <span>Kembali</span>
             </button>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-gray-800">
-                {meeting.judul_pertemuan}
+              <h1 className="text-xl sm:text-2xl font-bold text-sky-50 truncate">
+                {meeting ? meeting.judul_pertemuan : "..."}
               </h1>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 p-2">
               {realtimeConnected ? (
                 <div className="flex items-center gap-2 text-green-600 text-sm">
                   <Wifi size={16} />
@@ -715,8 +690,8 @@ export const MeetingDetail: React.FC = () => {
               )}
 
               {refreshing && (
-                <div className="text-sm text-blue-600 animate-pulse">
-                  Memperbarui...
+                <div className="text-sm text-yellow-400 animate-pulse">
+                  Updating...
                 </div>
               )}
             </div>
@@ -724,196 +699,222 @@ export const MeetingDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* Content Area with Loading Logic */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Meeting Info */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Informasi Pertemuan
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex items-center text-gray-600">
-              <Calendar size={20} className="mr-3 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-500">Tanggal</p>
-                <p className="font-medium">
-                  {new Date(meeting.tanggal).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center text-gray-600">
-              <Clock size={20} className="mr-3 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-500">Waktu</p>
-                <p className="font-medium">{waktuPertemuan}</p>
-              </div>
-            </div>
-            <div className="flex items-center text-gray-600">
-              <MapPin size={20} className="mr-3 text-red-500" />
-              <div>
-                <p className="text-sm text-gray-500">Lokasi</p>
-                <p className="font-medium">{meeting.lokasi}</p>
-              </div>
-            </div>
-            <div className="flex items-center text-gray-600">
-              <Users size={20} className="mr-3 text-purple-500" />
-              <div>
-                <p className="text-sm text-gray-500">Total Peserta</p>
-                <p className="font-medium">
-                  <span className="text-green-600">{registInCount}</span> masuk / 
-                  <span className="text-orange-600"> {registOutCount}</span> keluar
-                </p>
-              </div>
-            </div>
+        {isUnauthorized ? (
+          <div className="text-center py-12 bg-white rounded-xl shadow-lg p-6">
+             <p className="text-gray-600 font-semibold text-lg">Access Denied</p>
+             <p className="text-gray-500 mt-2">Try logging in first to access this page.</p>
           </div>
-          {meeting.deskripsi && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <p className="text-gray-600">{meeting.deskripsi}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Tabs untuk Tournament */}
-        {meeting.is_tournament && (
-          <div className="bg-white rounded-xl shadow-lg mb-8">
-            <div className="border-b border-gray-200">
-              <nav className="flex">
-                <button
-                  onClick={() => handleTabChange("attendance")}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "attendance"
-                      ? "border-blue-500 text-blue-600 bg-blue-50"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <UserCheck size={18} />
-                  Data Kehadiran
-                </button>
-                <button
-                  onClick={() => handleTabChange("matches")}
-                  className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === "matches"
-                      ? "border-blue-500 text-blue-600 bg-blue-50"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <Trophy size={18} />
-                  Pertandingan
-                </button>
-              </nav>
-            </div>
+        ) : loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading meeting details...</p>
           </div>
-        )}
-
-        {/* Dual Pane Layout untuk Attendance */}
-        {(!meeting.is_tournament || activeTab === "attendance") && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Regist In Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl flex-shrink-0">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <LogIn size={20} className="text-blue-600" />
-                    <h3 className="text-lg font-bold text-gray-800">Regist In</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={exportRegistInToExcel}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                      disabled={registInCount === 0}
-                    >
-                      <Download size={16} />
-                      <span className="hidden sm:inline">Export</span>
-                    </button>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      <button
-                        onClick={handleRegistIn}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        <QrCode size={16} />
-                        Scan QR
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setBulkActionType("insert");
-                          setShowPasswordModal(true);
-                        }}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                      >
-                        <UserCheck size={16} />
-                        Daftarkan Semua
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setBulkActionType("delete");
-                          setShowPasswordModal(true);
-                        }}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                      >
-                        <LogOut size={16} />
-                        Hapus Semua
-                      </button>
+        ) : !meeting ? (
+          <div className="text-center py-12 bg-white rounded-xl shadow-lg p-6">
+            <p className="text-gray-600 font-semibold text-lg">Meeting Not Found</p>
+            <p className="text-gray-500 mt-2">The meeting you are looking for does not exist or could not be loaded.</p>
+          </div>
+        ) : (
+          /* This <></> fragment contains all your existing page content */
+          <>
+            {/* MOVED Constants: Define them only AFTER we know meeting is not null */}
+            {(() => {
+              const waktuPertemuan = `${meeting.waktu_mulai} - ${meeting.waktu_selesai}`;
+              const registInCount = meeting.attendees.filter((a) => a.isAttending).length;
+              const registOutCount = meeting.registOutData.filter((a) => a.isRegistedOut).length;
+              
+              return (
+                <>
+                {/* Meeting Info */}
+                <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl shadow-lg p-6 mb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex items-center text-sky-50">
+                      <Calendar size={20} className="mr-3 text-[#178be4]" />
+                      <div>
+                        <p className="text-sm text-slate-400">Date</p>
+                        <p className="font-medium">
+                          {new Date(meeting.tanggal).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-sky-50">
+                      <Clock size={20} className="mr-3 text-[#0bde7b]" />
+                      <div>
+                        <p className="text-sm text-slate-400">Time</p>
+                        <p className="font-medium">{waktuPertemuan}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-sky-50">
+                      <MapPin size={20} className="mr-3 text-[#FE0081]" />
+                      <div>
+                        <p className="text-sm text-slate-400">Location</p>
+                        <p className="font-medium">{meeting.lokasi}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-sky-50">
+                      <Users size={20} className="mr-3 text-[#c55efd]" />
+                      <div>
+                        <p className="text-sm text-slate-400">Participants</p>
+                        <p className="font-medium">
+                          <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">{registInCount}</span> entries / 
+                          <span className="text-transparent bg-clip-text bg-gradient-to-tl from-[#f93434] to-[#ff76a4]"> {registOutCount}</span> exits
+                        </p>
+                      </div>
                     </div>
                   </div>
+                  {meeting.deskripsi && (
+                    <div className="mt-4 pt-4 border-t border-slate-600">
+                      <p className="text-gray-200">{meeting.deskripsi}</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
-                <CheckInData
-                  attendees={meeting.attendees}
-                  onScanQR={handleRegistIn}
-                  onUpdateAttendance={handleUpdateAttendance}
-                  users={users}
-                />
-              </div>
-            </div>
 
-            {/* Regist Out Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
-              <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl flex-shrink-0">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <LogOut size={20} className="text-orange-600" />
-                    <h3 className="text-lg font-bold text-gray-800">Regist Out</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={exportRegistOutToExcel}
-                      className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                      disabled={registOutCount === 0}
-                    >
-                      <Download size={16} />
-                      <span className="hidden sm:inline">Export</span>
-                    </button>
-                    <button
-                      onClick={handleRegistOut}
-                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm"
-                    >
-                      <QrCode size={16} />
-                      Scan QR
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
-                <CheckOutData
-                  attendees={meeting.registOutData}
-                  onScanQR={handleRegistOut}
-                  onUpdateAttendance={handleUpdateAttendance}
-                  users={users}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+                  {/* Tabs untuk Tournament */}
+                  {meeting.is_tournament && (
+                    <div className="bg-white rounded-xl shadow-lg mb-8">
+                      <div className="border-b border-gray-200">
+                        <nav className="flex w-full">
+                          <button
+                            onClick={() => handleTabChange("attendance")}
+                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                              activeTab === "attendance"
+                                ? "border-blue-500 text-blue-600 bg-blue-50"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            <UserCheck size={18} />
+                            Attendance
+                          </button>
+                          <button
+                            onClick={() => handleTabChange("matches")}
+                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                              activeTab === "matches"
+                                ? "border-blue-500 text-blue-600 bg-blue-50"
+                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            <Trophy size={18} />
+                            Matches
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  )}
 
-        {/* Match Recap untuk Tournament */}
-        {meeting.is_tournament && activeTab === "matches" && (
-          <div className="bg-white rounded-xl shadow-lg">
-            <div className="p-6">
-              <RoundsCard pertemuanId={id || ""} />
-            </div>
-          </div>
+                  {/* Dual Pane Layout untuk Attendance */}
+                  {(!meeting.is_tournament || activeTab === "attendance") && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Regist In Pane */}
+                      <div className="bg-[#f5fafd] rounded-xl shadow-lg flex flex-col h-fit transition-all border border-slate-400">
+                        <div className="bg-gradient-to-b from-[#0c1015] to-[#2f3048] p-4 rounded-t-xl flex-shrink-0">
+                          <div className="flex items-center justify-between gap-2 overflow-x-auto">
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <LogIn size={20} className="text-[#0bde7b]" />
+                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">Regist In</h3>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={exportRegistInToExcel}
+                                className="flex items-center gap-2 p-2 bg-gradient-to-tl from-[#01b82c] to-[#29ffb8] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                disabled={registInCount === 0}
+                              >
+                                <Download size={16} />
+                                <span className="hidden sm:inline">Export</span>
+                              </button>
+                              <button
+                                onClick={handleRegistIn}
+                                className="flex items-center p-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                              >
+                                <QrCode size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setBulkActionType("insert");
+                                  setShowPasswordModal(true);
+                                }}
+                                className="flex items-center p-2 bg-gradient-to-tl from-[#2700a8] to-[#d685ff] text-[#fefff9] rounded-lg hover:bg-purple-700 transition-colors text-sm"
+                              >
+                                <UserCheck size={16} />
+                                </button>
+                              <button
+                                onClick={() => {
+                                  setBulkActionType("delete");
+                                  setShowPasswordModal(true);
+                                }}
+                                className="flex items-center p-2 bg-gradient-to-tl from-[#da0000] to-[#ff4b87] text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
+                          <CheckInData
+                            attendees={meeting.attendees}
+                            onScanQR={handleRegistIn}
+                            onUpdateAttendance={handleUpdateAttendance}
+                            users={users}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Regist Out Pane */}
+                      <div className="bg-[#f5fafd] rounded-xl shadow-lg flex flex-col h-fit transition-all duration-30 border border-slate-400">
+                        <div className="bg-gradient-to-b from-[#0c1015] to-[#2f3048] p-4 rounded-t-xl flex-shrink-0">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <LogOut size={20} className="text-[#ff7777]" />
+                              <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-tl from-[#ff3d3d] to-[#ffa5c3]">Regist Out</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={exportRegistOutToExcel}
+                                className="flex items-center gap-2 p-2 bg-gradient-to-tl from-[#01b82c] to-[#29ffb8] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                disabled={registOutCount === 0}
+                              >
+                                <Download size={16} />
+                                <span className="hidden sm:inline">Export</span>
+                              </button>
+                              <button
+                                onClick={handleRegistOut}
+                                className="flex items-center p-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                              >
+                                <QrCode size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
+                          <CheckOutData
+                            attendees={meeting.registOutData}
+                            onScanQR={handleRegistOut}
+                            onUpdateAttendance={handleUpdateAttendance}
+                            users={users}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Match Recap untuk Tournament */}
+                  {meeting.is_tournament && activeTab === "matches" && (
+                    <div className="bg-[#f5fafd] rounded-xl shadow-lg border border-gray-600">
+                      <div className="p-6">
+                        {/* FIXED: Added w-full wrapper */}
+                        <div className="w-full">
+                          <RoundsCard pertemuanId={id || ""} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </>
         )}
       </div>
 
@@ -940,30 +941,30 @@ export const MeetingDetail: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 w-80">
             <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">
-              {bulkActionType === "insert" ? "Daftarkan Semua Peserta" : "Hapus Semua Peserta"}
+              {bulkActionType === "insert" ? "Check In All Participants" : "Delete All Participants"}
             </h3>
             <p className="text-sm text-gray-600 text-center mb-4">
-              Masukkan password admin untuk konfirmasi.
+              Enter admin password to confirm.
             </p>
             <input
               type="password"
-              placeholder="Password admin"
+              placeholder="Enter Password"
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:outline-none"
             />
             {errorMsg && <p className="text-red-500 text-sm mb-3 text-center">{errorMsg}</p>}
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-center gap-2">
               <button
                 onClick={() => {
                   setShowPasswordModal(false);
                   setAdminPassword("");
                   setErrorMsg("");
                 }}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 text-sm"
+                className="px-4 py-2 border border-red-500 text-red-400 rounded-lg hover:bg-red-100 transition-colors duration-300 text-sm"
                 disabled={processingBulkAction}
               >
-                Batal
+                Cancel
               </button>
               <button
                 onClick={() =>
@@ -971,12 +972,12 @@ export const MeetingDetail: React.FC = () => {
                 }
                 className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
                   bulkActionType === "insert"
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-red-600 hover:bg-red-700"
+                    ? "bg-gradient-to-tl from-[#2700a8] to-[#d685ff] text-[#fefff9] hover:opacity-80"
+                    : "bg-gradient-to-tl from-[#da0000] to-[#ff4b87] hover:opacity-80"
                 } disabled:opacity-50`}
                 disabled={processingBulkAction}
               >
-                {processingBulkAction ? "Memproses..." : "Konfirmasi"}
+                {processingBulkAction ? "Processing..." : "Confirm"}
               </button>
             </div>
           </div>
