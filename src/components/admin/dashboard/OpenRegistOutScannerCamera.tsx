@@ -25,12 +25,23 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
   const [snackbarMsg, setSnackbarMsg] = useState<string | null>(null);
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isScanningPaused, setIsScanningPaused] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0); // <-- REPLACED
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  const containerId = "qr-admin-scanner";
+  const lastScannedRef = useRef<string>("");
+  const lastScanTimeRef = useRef<number>(0);
+  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const containerId = "qr-admin-scanner-out";
+  const SCAN_COOLDOWN = 3000; // 3 detik cooldown (FROM REGIST IN)
+  const DUPLICATE_THRESHOLD = 5000; // 5 detik (FROM REGIST IN)
 
   const cleanup = async () => {
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+    
     try {
       if (html5QrCodeRef.current?.isScanning) {
         await html5QrCodeRef.current.stop();
@@ -45,16 +56,55 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
     }
   };
 
-  const processDecoded = async (decodedText: string) => {
-    if (isProcessing || isScanningPaused) return;
+  const startCooldownTimer = () => {
+    setCooldownRemaining(SCAN_COOLDOWN / 1000);
+    
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current);
+    }
+    
+    cooldownTimerRef.current = setInterval(() => {
+      setCooldownRemaining((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimerRef.current) {
+            clearInterval(cooldownTimerRef.current);
+            cooldownTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
+const processDecoded = async (decodedText: string) => {
+    const now = Date.now();
+    
+    // Cek apakah sedang dalam cooldown (FROM REGIST IN)
+    if (isProcessing || cooldownRemaining > 0) {
+      return;
+    }
+    
+    // Cek apakah ini duplikat scan yang sangat dekat waktunya (FROM REGIST IN)
+    if (
+      lastScannedRef.current === decodedText &&
+      now - lastScanTimeRef.current < DUPLICATE_THRESHOLD
+    ) {
+      console.log("Duplikat scan diabaikan:", decodedText);
+      return;
+    }
+
+    // Update tracking (FROM REGIST IN)
+    lastScannedRef.current = decodedText;
+    lastScanTimeRef.current = now;
+    
     setIsProcessing(true);
-    setIsScanningPaused(true);
+    startCooldownTimer(); // (FROM REGIST IN)
 
+    // --- YOUR ORIGINAL REGIST OUT LOGIC STARTS HERE ---
     const timezoneOffset = -new Date().getTimezoneOffset();
     const clientTime = new Date().toISOString();
 
-    // simpan payload supaya bisa tampil di snackbar kalau gagal
     const payload = {
       token: decodedText,
       pertemuanId: Number(pertemuanId),
@@ -75,7 +125,7 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
 
       if (!data?.success) {
         console.error("Edge Function Response:", data);
-        throw new Error(data?.message || "Token tidak valid / kedaluwarsa.");
+        throw new Error(data?.message || "Invalid token.");
       }
 
       const userName = data.user?.name || "Peserta";
@@ -83,10 +133,10 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
 
       const statusText =
         data.status === "inserted"
-          ? "Regis Out dicatat"
+          ? "Regis Out listed"
           : data.status === "updated"
-          ? "Regis Out diperbarui"
-          : "Berhasil";
+          ? "Regis Out updated"
+          : "Success";
 
       setSnackbarMsg(
         `✅ ${statusText} - ${userName}${userNrp ? ` (${userNrp})` : ""}`
@@ -109,14 +159,15 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
         errorString = "Tidak bisa membaca detail error.";
       }
 
-      // tampilkan format payload dan error terpisah
       const formattedMsg = `❌ payload: ${JSON.stringify(payload, null, 2)}\nerror: ${errorString}`;
 
       setSnackbarMsg(formattedMsg);
       setTimeout(() => setSnackbarMsg(null), 10000);
     } finally {
-      setIsProcessing(false);
-      setTimeout(() => setIsScanningPaused(false), 2000);
+      
+      setIsProcessing(false); 
+      // The old setTimeout for isScanningPaused is no longer needed.
+      // The startCooldownTimer() handles the pause.
     }
   };
 
@@ -126,7 +177,9 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
       setScanError(null);
       setSnackbarMsg(null);
       setIsProcessing(false);
-      setIsScanningPaused(false);
+      setCooldownRemaining(0);
+      lastScannedRef.current = "";
+      lastScanTimeRef.current = 0;
       return;
     }
 
@@ -135,7 +188,7 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
       setScanError(null);
       setSnackbarMsg(null);
       setIsProcessing(false);
-      setIsScanningPaused(false);
+      setCooldownRemaining(0);
 
       try {
         // Pastikan container ada
@@ -149,7 +202,6 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 260, height: 260 } },
           (decodedText) => {
-            // Proses setiap scan tanpa menghentikan scanner
             processDecoded(decodedText);
           },
           () => {
@@ -158,7 +210,7 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
         );
       } catch {
         setScanError(
-          "Tidak bisa mengakses kamera. Pastikan izin kamera diberikan."
+          "Camera inaccessible. Make sure camera permissions are enabled."
         );
       }
     };
@@ -176,9 +228,9 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Regist Out Peserta</h2>
+        <div className="bg-gradient-to-b from-[#0c1015] to-[#2f3054] text-[#f6fbff] rounded-2xl max-w-md w-full overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-slate-500">
+            <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#ff3d3d] to-[#ffa5c3]">Register Out Scanner</h2>
             <button
               onClick={() => {
                 onClose();
@@ -206,39 +258,51 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
                 <div
                   id={containerId}
                   style={{ width: "100%", aspectRatio: "1 / 1" }}
-                  className="rounded border border-gray-200 overflow-hidden"
+                  className="rounded border border-slate-500 overflow-hidden mb-2"
                 />
-                <p className="mt-3 text-sm text-gray-500 text-center">
-                  Arahkan kamera ke QR dinamis milik peserta. Scanner akan terus aktif untuk scan berikutnya.
-                </p>
+                
                 {isProcessing && (
-                  <div className="mt-2 flex items-center gap-2 text-blue-600">
+                  <div className="mt-2 flex items-center gap-2 text-[#679dfb]">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Memproses...</span>
+                    <span className="text-sm">Processing...</span>
                   </div>
                 )}
-                {isScanningPaused && !isProcessing && (
-                  <div className="mt-2 flex items-center gap-2 text-gray-500">
-                    <span className="text-sm">Scanner dijeda...</span>
+                {cooldownRemaining > 0 && !isProcessing && (
+                  <div className="mt-2 flex items-center gap-2 text-orange-600">
+                    <div className="h-4 w-4 rounded-full border-2 border-orange-600 border-t-transparent animate-spin" />
+                    <span className="text-sm font-medium">
+                      Scanner paused: {cooldownRemaining}s
+                    </span>
                   </div>
                 )}
+                {cooldownRemaining === 0 && !isProcessing && (
+                  <div className="mt-2 flex items-center gap-2 text-[#4dffac]">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-sm">Ready</span>
+                  </div>
+                )}
+                <p className="mt-2 text-sm text-slate-400 text-center">
+                  Point your camera towards the participant's QR code.
+                </p>
+                <p className="text-sm text-slate-500 text-center">
+                  The scanner will pause after a successful scan.
+                </p>
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex pt-2">
               <button
                 type="button"
                 onClick={() => onClose()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Tutup
+                Close
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Snackbar Notification */}
       {snackbarMsg && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] animate-slide-up">
           <div
@@ -253,7 +317,7 @@ export const OpenRegistOutScannerCamera: React.FC<QRCodeModalProps> = ({
             ) : (
               <AlertTriangle size={18} />
             )}
-            <span className="text-sm font-medium">{snackbarMsg}</span>
+            <span className="text-sm font-medium whitespace-pre-wrap">{snackbarMsg}</span>
           </div>
         </div>
       )}

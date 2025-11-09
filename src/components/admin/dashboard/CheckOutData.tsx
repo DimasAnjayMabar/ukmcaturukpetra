@@ -10,10 +10,10 @@ import {
   ArrowDownAZ,
   ArrowUpAZ
 } from 'lucide-react';
-import { RegistOut } from '../../../types'; // <-- Changed type
+import { RegistOut } from '../../../types';
 
 interface CheckOutDataProps {
-  attendees: RegistOut[]; // <-- Changed type
+  attendees: RegistOut[];
   onScanQR: () => void;
   onUpdateAttendance: (userId: string, isPresent: boolean) => void;
   users: {
@@ -110,9 +110,9 @@ export const CheckOutData: React.FC<CheckOutDataProps> = ({ // <-- Changed compo
         onClick={() => setIsOpen(!isOpen)}
       >
         <div className="text-left">
-          <h3 className="text-xl font-bold text-black mb-1">Check-Out Data</h3> {/* <-- Changed text */}
+          <h3 className="text-xl font-bold text-black mb-1">Check-Out Data</h3>
           <p className="text-sm text-gray-600">
-            {presentCount} of {totalCount} participant exits {/* <-- Changed text */}
+            {presentCount} of {totalCount} participant exits
           </p>
         </div>
         <ChevronDown 
@@ -176,14 +176,14 @@ export const CheckOutData: React.FC<CheckOutDataProps> = ({ // <-- Changed compo
               <div className="flex items-center gap-3">
                 {/* Green/Red Status Dot */}
                 <div className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                  attendee.isRegistedOut // <-- Changed property
+                  attendee.isRegistedOut
                     ? 'bg-green-500 shadow-green-200 shadow-inner' 
                     : 'bg-red-500 shadow-red-200 shadow-inner'
                 }`} />
                 
                 <div>
                   <span className={`font-semibold ${
-                    attendee.isRegistedOut ? 'text-gray-900' : 'text-gray-500' // <-- Changed property
+                    attendee.isRegistedOut ? 'text-gray-900' : 'text-gray-500'
                   }`}>
                     {users[attendee.user_id]?.name || attendee.user_id}
                   </span>
@@ -201,12 +201,12 @@ export const CheckOutData: React.FC<CheckOutDataProps> = ({ // <-- Changed compo
                 {/* Green/Red "person" icon button */}
                 <div
                   className={`p-2 rounded-full ${
-                    attendee.isRegistedOut // <-- Changed property
+                    attendee.isRegistedOut
                       ? 'bg-green-100 text-green-600'
                       : 'bg-red-100 text-red-600'
                   }`}
                 >
-                  {attendee.isRegistedOut ? ( // <-- Changed property
+                  {attendee.isRegistedOut ? (
                     <UserRoundCheck size={18} />
                   ) : (
                     <UserRoundX size={18} />
@@ -229,7 +229,7 @@ export const CheckOutData: React.FC<CheckOutDataProps> = ({ // <-- Changed compo
         {sortedAndFilteredAttendees.length === 0 && searchTerm.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <UserRoundX size={48} className="mx-auto mb-4 text-gray-300" />
-            <p className="font-semibold">No participants have exited yet.</p> {/* <-- Changed text */}
+            <p className="font-semibold">No participants have exited yet.</p>
           </div>
         )}
       </div>
