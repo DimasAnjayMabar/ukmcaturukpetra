@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
   LabelList
 } from 'recharts';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SwissPlayer } from "../../../utils/swiss";
 import { supabase } from "../../../db_client/client";
@@ -27,6 +27,22 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
   const [exporting, setExporting] = useState(false);
   const [topWinners, setTopWinners] = useState<any[]>([]);
   const navigate = useNavigate();
+  const chartWrapperRef = useRef<HTMLDivElement>(null);
+  const [activeTooltip, setActiveTooltip] = useState<boolean>(true);
+
+  // Effect to handle clicks outside the chart to close the tooltip on mobile
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chartWrapperRef.current && !chartWrapperRef.current.contains(event.target as Node)) {
+        setActiveTooltip(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [chartWrapperRef]);
 
   useEffect(() => {
     if (pertemuanId) {
@@ -581,100 +597,113 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
     }
   };
 
-  return (
-    <div className="">
-      {topWinners.length > 0 && (
-        <div className="mb-6 bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl p-6 border border-slate-600 shadow-lg">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="text-yellow-400" size={24} />
-            <h2 className="text-xl font-bold text-slate-50">Top Players</h2>
-          </div>
-          
-          {(() => {
-            const chartData = [...topWinners].reverse().map(winner => ({
-              ...winner,
-              rankLabel: `#${winner.rank}`
-            }));
-            
-            return (
-            <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-              <div className="w-full lg:w-2/3 h-64 lg:h-auto">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 20, right: -35, left: 5, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="rankLabel" tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                    <YAxis 
-                      orientation="right" 
-                      tick={{ fontSize: 12, fill: '#94a3b8' }}
-                      domain={[0, 'auto']}
-                    />
-                    <Tooltip 
-                      cursor={{fill: '#334155', opacity: 0.6}}
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
-                    />
-                    <Bar dataKey="score" fill="#38bdf8">
-                      <LabelList 
-                        dataKey="score" 
-                        position="top" 
-                        fill="#f1f5f9" 
-                        formatter={(value: number) => value.toFixed(1)}
-                     />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+return (
+    <div className="">
+      {topWinners.length > 0 && (
+        <div className="mb-6 bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl p-6 border border-slate-600 shadow-lg">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="text-yellow-400" size={24} />
+            <h2 className="text-xl font-bold text-slate-50">Top Players</h2>
+          </div>
+          
+          {(() => {
+            const chartData = [...topWinners].reverse().map(winner => ({
+              ...winner,
+              rankLabel: `#${winner.rank}`
+            }));
+            
+            return (
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                {/* --- MODIFIED LINE (width and ref) --- */}
+                <div className="w-full lg:w-1/2 h-64 lg:h-auto" ref={chartWrapperRef}> 
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={chartData}
+                      margin={{ top: 20, right: -35, left: 5, bottom: 5 }}
+                      onMouseEnter={() => setActiveTooltip(true)} // <-- ADDED
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="rankLabel" tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                      <YAxis 
+                        orientation="right" 
+                        tick={{ fontSize: 12, fill: '#94a3b8' }}
+                        domain={[0, 'auto']}
+                      />
+                      <Tooltip 
+                        active={activeTooltip} // <-- ADDED
+                        cursor={{fill: '#334155', opacity: 0.6}}
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#fff' }}
+                        // --- ADDED THIS PROP ---
+                        labelFormatter={(label) => {
+                          const winner = chartData.find(w => w.rankLabel === label);
+                          return winner ? winner.name : label;
+                        }}
+                      />
+                      <Bar dataKey="score" fill="#38bdf8">
+                        <LabelList 
+                          dataKey="score" 
+                          position="top" 
+                          fill="#f1f5f9" 
+                          // --- MODIFIED THIS PROP (FIXES TS ERROR) ---
+                          formatter={(value: ReactNode) => {
+                            if (typeof value === 'number') {
+                              return value.toFixed(1);
+                            }
+                            return value;
+                          }}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
 
-                  <div className="w-full lg:w-1/3 flex flex-col gap-2">
-                    {topWinners.map((winner) => (
-                      <div 
-                        key={winner.rank} 
-                        className="text-[#fefff9] bg-gradient-to-tl from-[#002680] to-transparent hover:bg-blue-700 transition-colors rounded-lg px-4 py-3 shadow-md"
-                      >
-                        <div className="flex items-center justify-between gap-4">
-                          
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="font-semibold text-slate-300 w-5 text-left">
-                                #{winner.rank}
-                              </span>
-                              <span className="font-semibold text-slate-100 truncate" title={winner.name}>
-                                {winner.name}
-                              </span>
-                            </div>
+                <div className="w-full lg:w-1/2 flex flex-col gap-2">
+                  {topWinners.map((winner) => (
+                    <div 
+                      key={winner.rank} 
+                      className="text-[#fefff9] bg-gradient-to-tl from-[#002680] to-transparent hover:bg-blue-700 transition-colors rounded-lg px-4 py-3 shadow-md"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-semibold text-slate-300 w-5 text-left">
+                            #{winner.rank}
+                          </span>
+                          <span className="font-semibold text-slate-100 truncate" title={winner.name}>
+                            {winner.name}
+                          </span>
+                        </div>
 
-                            <div className="text-sm text-slate-400 flex items-center gap-3 flex-shrink-0">
-                              <div className="flex items-center gap-1">
-                                <span className="text-slate-500">Pts:</span>
-                                <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">
-                                  {winner.score.toFixed(1)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-slate-500">TB:</span>
-                                <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#568eff] to-[#a0c3ff]">
-                                {winner.tb.toFixed(1)}
-                                </span>
-                             </div>
-                        </div>
+                        <div className="text-sm text-slate-400 flex items-center gap-3 flex-shrink-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-500">Pts:</span>
+                            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">
+                              {winner.score.toFixed(1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-500">TB:</span>
+                            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#568eff] to-[#a0c3ff]">
+                              {winner.tb.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
 
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-              </div>
-            )
-          })()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
-          {topWinners.length < 6 && (
-          <p className="text-center text-gray-500 text-sm mt-4">
-              Total pemain: {players.length} (menampilkan {topWinners.length} teratas)
-            </p>
-          )}
-        </div>
-      )}
-
+          {topWinners.length < 6 && (
+            <p className="text-center text-gray-500 text-sm mt-4">
+              Total pemain: {players.length} (menampilkan {topWinners.length} teratas)
+            </p>
+          )}
+        </div>
+      )}
       <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-xl p-6 border border-slate-600 shadow-lg">
         <div className="flex items-center justify-between mb-4">
           <div>
