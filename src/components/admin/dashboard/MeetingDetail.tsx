@@ -678,7 +678,7 @@ export const MeetingDetail: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 lg:ml-0 bg-[#f5fafd]">
+    <div className="flex-1 lg:ml-0 bg-[#f5fafd] overflow-x-auto">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-gradient-to-r from-[#0c1015] to-[#0f1028] shadow-lg border-b border-slate-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
