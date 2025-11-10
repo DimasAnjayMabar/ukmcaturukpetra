@@ -132,7 +132,7 @@ const DashboardPeserta: React.FC<DashboardLayoutProps> = ({ user }) => {
       <ErrorModal
         isOpen={showAuthError}
         onClose={handleAuthErrorClose}
-        customMessage="Akses ditolak. Anda tidak memiliki izin untuk mengakses dashboard peserta."
+        customMessage="Access denied. You do not have permission to access the participant dashboard."
         errorType="other"
       />
 

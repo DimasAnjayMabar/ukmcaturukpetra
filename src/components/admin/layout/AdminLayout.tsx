@@ -81,7 +81,7 @@ export const AdminLayout: React.FC = () => {
       <ErrorModal
         isOpen={true}
         onClose={() => navigate('/admin/login')}
-        customMessage="Akses ditolak. Silakan login terlebih dahulu."
+        customMessage="Access denied. Plese log in first."
         errorType="other"
       />
     );

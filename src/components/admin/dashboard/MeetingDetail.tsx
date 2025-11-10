@@ -22,6 +22,7 @@ import {
   Download,
   Menu,
   Trash2,
+  X
 } from "lucide-react";
 import {Pertemuan, Kehadiran, TournamentMatch, RegistOut} from "../../../types";
 import {CheckInData} from "./CheckInData";
@@ -865,7 +866,7 @@ export const MeetingDetail: React.FC = () => {
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <button
                                 onClick={exportRegistInToExcel}
-                                className="flex items-center gap-2 p-2 bg-gradient-to-tl from-[#01b82c] to-[#29ffb8] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                className="flex items-center gap-2 p-2 border border-[#01b82c] bg-gradient-to-tl from-[#01b856] to-transparent text-[#fefff9] rounded-lg hover:bg-[#29ffb8] transition-colors text-sm"
                                 disabled={registInCount === 0}
                               >
                                 <Download size={16} />
@@ -873,7 +874,7 @@ export const MeetingDetail: React.FC = () => {
                               </button>
                               <button
                                 onClick={handleRegistIn}
-                                className="flex items-center p-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                className="flex items-center p-2 border border-[#150de7] text-[#fefff9] bg-gradient-to-tl from-[#0032a8] to-transparent rounded-lg hover:bg-blue-700 transition-colors text-sm"
                               >
                                 <QrCode size={16} />
                               </button>
@@ -921,7 +922,7 @@ export const MeetingDetail: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={exportRegistOutToExcel}
-                                className="flex items-center gap-2 p-2 bg-gradient-to-tl from-[#01b82c] to-[#29ffb8] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                className="flex items-center gap-2 p-2 border border-[#01b82c] bg-gradient-to-tl from-[#01b856] to-transparent text-[#fefff9] rounded-lg hover:bg-[#29ffb8] transition-colors text-sm"
                                 disabled={registOutCount === 0}
                               >
                                 <Download size={16} />
@@ -929,7 +930,7 @@ export const MeetingDetail: React.FC = () => {
                               </button>
                               <button
                                 onClick={handleRegistOut}
-                                className="flex items-center p-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:opacity-90 transition-colors text-sm"
+                                className="flex items-center p-2 border border-[#150de7] text-[#fefff9] bg-gradient-to-tl from-[#0032a8] to-transparent rounded-lg hover:bg-blue-700 transition-colors text-sm"
                               >
                                 <QrCode size={16} />
                               </button>
@@ -980,56 +981,104 @@ export const MeetingDetail: React.FC = () => {
         pertemuanId={id || ""}
       />
 
-      {showPasswordModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-80">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">
-              {bulkActionType === "insert"
-                ? "Check In All Participants"
-                : "Delete All Participants"}
-            </h3>
-            <p className="text-sm text-gray-600 text-center mb-4">
-              Enter admin password to confirm.
-            </p>
-            <input
-              type="password"
-              placeholder="Enter Password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 mb-3 focus:outline-none"
-            />
-            {errorMsg && (
-              <p className="text-red-500 text-sm mb-3 text-center">
-                {errorMsg}
-              </p>
-            )}
-            <div className="flex justify-center gap-2">
+{showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-8 z-50">
+          <div className="bg-white rounded-2xl max-w-md w-full">
+            {/* --- New Header --- */}
+            <div className="bg-gradient-to-b from-[#0c1015] to-[#1f2038] rounded-t-2xl flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center">
+                {/* Dynamic Icon */}
+                <div className={bulkActionType === 'insert' ? "text-purple-400" : "text-red-500"}>
+                  {bulkActionType === 'insert' ? (
+                    <UserCheck size={24} />
+                  ) : (
+                    <Trash2 size={24} />
+                  )}
+                </div>
+                {/* Dynamic Title */}
+                <h2 className={`ml-3 text-xl font-bold text-transparent bg-clip-text ${
+                  bulkActionType === 'insert'
+                    ? 'bg-gradient-to-tl from-[#8b5cf6] to-[#d685ff]'
+                    : 'bg-gradient-to-tl from-[#ff3f3f] to-[#ff4b87]'
+                }`}>
+                  {bulkActionType === "insert"
+                    ? "Check In All Participants"
+                    : "Delete All Participants"}
+                </h2>
+              </div>
               <button
                 onClick={() => {
                   setShowPasswordModal(false);
                   setAdminPassword("");
                   setErrorMsg("");
                 }}
-                className="px-4 py-2 border border-red-500 text-red-400 rounded-lg hover:bg-red-100 transition-colors duration-300 text-sm"
+                className="text-sky-50 hover:text-sky-100 p-1"
                 disabled={processingBulkAction}
               >
-                Cancel
+                <X size={20} />
               </button>
-              <button
-                onClick={() =>
-                  bulkActionType === "insert"
-                    ? handleBulkInsertAll()
-                    : handleBulkDeleteAll()
-                }
-                className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
-                  bulkActionType === "insert"
-                    ? "bg-gradient-to-tl from-[#2700a8] to-[#d685ff] text-[#fefff9] hover:opacity-80"
-                    : "bg-gradient-to-tl from-[#da0000] to-[#ff4b87] hover:opacity-80"
-                } disabled:opacity-50`}
-                disabled={processingBulkAction}
-              >
-                {processingBulkAction ? "Processing..." : "Confirm"}
-              </button>
+            </div>
+
+            {/* --- New Content Area --- */}
+            <div className="p-6 space-y-4">
+              {errorMsg && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+                  {errorMsg}
+                </div>
+              )}
+              
+              <p className="text-gray-700">
+                Enter admin password to confirm. This action cannot be undone.
+              </p>
+
+              {/* Password Input */}
+              <input
+                type="password"
+                placeholder="Enter Password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* --- New Buttons --- */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setAdminPassword("");
+                    setErrorMsg("");
+                  }}
+                  disabled={processingBulkAction}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() =>
+                    bulkActionType === "insert"
+                      ? handleBulkInsertAll()
+                      : handleBulkDeleteAll()
+                  }
+                  disabled={processingBulkAction}
+                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors flex items-center justify-center ${
+                    bulkActionType === 'insert'
+                      ? 'bg-gradient-to-tl from-[#2700a8] to-[#d685ff] hover:opacity-90'
+                      : 'bg-gradient-to-tl from-[#da0000] to-[#ff4b87] hover:opacity-90'
+                  } disabled:opacity-50`}
+                >
+                  {processingBulkAction ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    'Confirm'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
