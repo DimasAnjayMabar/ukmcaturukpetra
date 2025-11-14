@@ -29,7 +29,6 @@ import {CheckInData} from "./CheckInData";
 import {CheckOutData} from "./CheckOutData";
 // import { MatchRecap } from "./MatchRecap";
 import {supabase} from "../../../db_client/client";
-import {ErrorModal} from "../../error_modal/ErrorModal";
 import {OpenRegistInScannerCamera} from "./OpenRegistInScannerCamera";
 import {OpenRegistOutScannerCamera} from "./OpenRegistOutScannerCamera";
 import * as XLSX from "xlsx";
@@ -74,7 +73,6 @@ export const MeetingDetail: React.FC = () => {
   const [processingBulkAction, setProcessingBulkAction] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const location = useLocation();
-  const locationState = location.state as LocationState;
   const [searchParams, setSearchParams] = useSearchParams();
   const {toggleSidebar} = useAdminLayout();
 
@@ -680,7 +678,7 @@ export const MeetingDetail: React.FC = () => {
   return (
     <div className="flex-1 lg:ml-0 bg-[#f5fafd] overflow-x-auto">
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-gradient-to-r from-[#0c1015] to-[#0f1028] shadow-lg border-b border-slate-600">
+      <div className="fixed top-0 left-0 right-0 z-20 bg-gradient-to-r from-[#0c1015] to-[#0f1028] shadow-lg border-b border-slate-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 py-[1.125rem]">
             <button
@@ -726,7 +724,7 @@ export const MeetingDetail: React.FC = () => {
       </div>
 
       {/* Content Area with Loading Logic */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-16">
         {isUnauthorized ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-lg p-6">
             <p className="text-gray-600 font-semibold text-lg">Access Denied</p>
