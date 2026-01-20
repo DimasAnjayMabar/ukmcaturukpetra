@@ -31,6 +31,82 @@ const getInitialState = (): TournamentState => ({
   }
 });
 
+/**
+ * Calculate Direct Encounter tiebreaker scores.
+ * DE only applies when exactly 2 players have the same score.
+ * - Winner gets 1, Loser gets 0, Tie gives 0.5 each
+ * - If group != 2 or players never met, DE = 0 (fall to Buchholz)
+ */
+const calculateDirectEncounter = (
+  playersMap: Record<string, Player>,
+  allMatches: Record<number, TournamentMatch[]>
+): Record<string, number> => {
+  const deScores: Record<string, number> = {};
+  
+  // Initialize all DE scores to 0
+  Object.keys(playersMap).forEach(id => {
+    deScores[id] = 0;
+  });
+
+  // Group players by score
+  const scoreGroups: Record<number, string[]> = {};
+  Object.values(playersMap).forEach(player => {
+    const score = player.score;
+    if (!scoreGroups[score]) {
+      scoreGroups[score] = [];
+    }
+    scoreGroups[score].push(player.id);
+  });
+
+  // Process each group
+  Object.entries(scoreGroups).forEach(([, playerIds]) => {
+    // DE only applies to groups of exactly 2 players
+    if (playerIds.length !== 2) {
+      return; // Skip - DE stays 0, will fall to Buchholz
+    }
+
+    const [player1Id, player2Id] = playerIds;
+
+    // Find head-to-head match between these two players
+    let headToHeadResult: { p1Score: number; p2Score: number } | null = null;
+
+    for (const roundMatches of Object.values(allMatches)) {
+      for (const match of roundMatches) {
+        if (match.hasil_pemain_1 === null || match.hasil_pemain_1 === undefined) {
+          continue; // Match not completed
+        }
+
+        // Check if this match is between our two players
+        if (match.pemain_1_id === player1Id && match.pemain_2_id === player2Id) {
+          headToHeadResult = {
+            p1Score: match.hasil_pemain_1,
+            p2Score: match.hasil_pemain_2 ?? 0
+          };
+          break;
+        } else if (match.pemain_1_id === player2Id && match.pemain_2_id === player1Id) {
+          headToHeadResult = {
+            p1Score: match.hasil_pemain_2 ?? 0,
+            p2Score: match.hasil_pemain_1
+          };
+          break;
+        }
+      }
+      if (headToHeadResult) break;
+    }
+
+    // Assign DE scores based on head-to-head result
+    if (headToHeadResult) {
+      deScores[player1Id] = headToHeadResult.p1Score;
+      deScores[player2Id] = headToHeadResult.p2Score;
+      console.log(`🎯 DE: ${playersMap[player1Id]?.name} (${headToHeadResult.p1Score}) vs ${playersMap[player2Id]?.name} (${headToHeadResult.p2Score})`);
+    } else {
+      console.log(`🎯 DE: ${playersMap[player1Id]?.name} & ${playersMap[player2Id]?.name} never played - falling to Buchholz`);
+    }
+  });
+
+  return deScores;
+};
+
 const Matchmaking: React.FC = () => {
   const [state, setState] = useState<TournamentState>(getInitialState());
   const [tournaments, setTournaments] = useState<Pertemuan[]>([]);
@@ -47,8 +123,7 @@ const Matchmaking: React.FC = () => {
     isRoundsSet, 
     winner, 
     maxCompletedRound, 
-    allRoundsMatches, 
-    roundScores 
+    allRoundsMatches
   } = state;
 
   // Helper function untuk update state dan auto-save
@@ -126,7 +201,7 @@ const Matchmaking: React.FC = () => {
           table: 'tournament_state',
           filter: `pertemuan_id=eq.${selectedTournament}`
         },
-        (payload) => {
+        (_payload) => {
           console.log('🔄 State updated by other admin, refreshing...');
           loadTournamentState(selectedTournament);
         }
@@ -237,24 +312,19 @@ const Matchmaking: React.FC = () => {
     }
 
     // Calculate tiebreakers
-    Object.values(cumulativePlayersMap).forEach(p => {
-      let directEncounterTotal = 0;
-      for (const round of Object.values(matchesByRound)) {
-        round.forEach((match: any) => {
-          if (match.hasil_pemain_1 == null) return;
-          if (match.pemain_1_id === p.id) {
-            directEncounterTotal += match.hasil_pemain_1;
-          } else if (match.pemain_2_id === p.id) {
-            directEncounterTotal += match.hasil_pemain_2;
-          }
-        });
-      }
-      p.tiebreak1 = directEncounterTotal;
-
+    // First calculate Buchholz (TB2) - sum of opponents' scores
+    (Object.values(cumulativePlayersMap) as Player[]).forEach((p) => {
       p.tiebreak2 = p.playedOpponents.reduce(
         (sum, oppId) => sum + (cumulativePlayersMap[oppId]?.score || 0),
         0
       );
+    });
+
+    // Then calculate Direct Encounter (TB1)
+    // DE only applies when exactly 2 players have the same score
+    const deScores = calculateDirectEncounter(cumulativePlayersMap, matchesByRound);
+    (Object.values(cumulativePlayersMap) as Player[]).forEach((p) => {
+      p.tiebreak1 = deScores[p.id] || 0;
     });
 
     // Update scores dan tiebreakers ke database
@@ -651,7 +721,7 @@ const Matchmaking: React.FC = () => {
 
           <Bracket
             matches={matches}
-            roundScores={new Map(roundScores)}
+            roundScores={new Map<number, string>()}
             onSetWinner={handleSetWinner}
             onSetTie={handleSetTie}
             roundNumber={currentRound}
