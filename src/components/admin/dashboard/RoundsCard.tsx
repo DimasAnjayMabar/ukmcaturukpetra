@@ -34,14 +34,19 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       return;
     }
 
-    // Sort players by: total_score DESC, tb2_buchholz DESC
+    // Sort players by: total_score DESC, tb1_direct_encounter DESC, tb2_buchholz DESC
     const sortedPlayers = [...playersData].sort((a, b) => {
       // Primary: total_score
       if (b.total_score !== a.total_score) {
         return (b.total_score || 0) - (a.total_score || 0);
       }
       
-      // Secondary: tb2_buchholz
+      // Secondary: tb1_direct_encounter
+      if ((b.tb1_direct_encounter || 0) !== (a.tb1_direct_encounter || 0)) {
+        return (b.tb1_direct_encounter || 0) - (a.tb1_direct_encounter || 0);
+      }
+      
+      // Tertiary: tb2_buchholz
       return (b.tb2_buchholz || 0) - (a.tb2_buchholz || 0);
     });
 
@@ -50,7 +55,8 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       rank: index + 1,
       name: player.name,
       score: player.total_score || 0,
-      tb: player.tb2_buchholz || 0
+      tb1: player.tb1_direct_encounter || 0,
+      tb2: player.tb2_buchholz || 0
     }));
 
     setTopWinners(top6);
@@ -71,7 +77,7 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       if (userIds.length > 0) {
         const { data: userData, error: userError } = await supabase
           .from("user_profile")
-          .select("id, name, nrp, role, email, total_score, tb2_buchholz")
+          .select("id, name, nrp, role, email, total_score, tb1_direct_encounter, tb2_buchholz")
           .in("id", userIds);
 
         if (userError) throw userError;
@@ -84,6 +90,7 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
           nrp: user.nrp,
           role: user.role,
           email: user.email,
+          tb1: user.tb1_direct_encounter || 0,
           tb2: user.tb2_buchholz || 0
         }));
 
@@ -132,11 +139,14 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       const tb1Map = new Map<string, number>();
 
       for (const [score, group] of groups.entries()) {
-        if (group.length === 1) {
-          tb1Map.set(group[0], 0);
+        // ⚠️ PENTING: DE hanya dihitung jika grup terdiri dari TEPAT 2 pemain
+        if (group.length !== 2) {
+          // Jika grup hanya 1 orang atau lebih dari 2 orang, DE = 0
+          group.forEach((pid) => tb1Map.set(pid, 0));
           continue;
         }
 
+        // Jika tepat 2 pemain, hitung DE berdasarkan head-to-head
         const groupSet = new Set(group);
 
         // Ambil semua match antar pemain di grup ini
@@ -234,7 +244,8 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
         "Name": player.name,
         "NRP": player.nrp,
         "Points": player.total_score || 0,
-        "Tiebreaker": player.tb2_buchholz || 0,
+        "Direct Encounter": player.tb1_direct_encounter || 0,
+        "Buchholz": player.tb2_buchholz || 0,
       }));
 
       const wb = XLSX.utils.book_new();
@@ -256,7 +267,6 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       const fileName = `Leaderboard ${pertemuanName} ${dateString}.xlsx`;
 
       XLSX.writeFile(wb, fileName);
-      alert("✅ Final standings successfuly exported!");
     } catch (error) {
       console.error("Error exporting final standings:", error);
       alert("Failed to export final standings. Please try again.");
@@ -497,8 +507,6 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       
       // NEW: Refresh players data to update top winners after round creation
       await fetchPlayers();
-
-      alert(`Round ${nextRoundNumber} berhasil dibuat dengan ${pairings.length} match!`);
     } catch (error) {
       console.error("❌ Error creating round:", error);
       alert("Gagal membuat round. Silakan coba lagi.");
@@ -625,6 +633,7 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
                     >
                       <div className="flex items-center justify-between gap-4">
                         
+                        {/* Left side - Rank and Name */}
                         <div className="flex items-center gap-3 min-w-0">
                           <span className="font-semibold text-slate-300 w-5 text-left">
                             #{winner.rank}
@@ -634,17 +643,29 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
                           </span>
                         </div>
 
-                        <div className="text-sm text-slate-400 flex items-center gap-3 flex-shrink-0">
+                        {/* Right side - Stats: Points, TB1, TB2 */}
+                        <div className="text-sm text-slate-400 flex items-center gap-2 flex-shrink-0">
+                          {/* Points */}
                           <div className="flex items-center gap-1">
                             <span className="text-slate-500">Pts:</span>
                             <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">
                               {winner.score.toFixed(1)}
                             </span>
                           </div>
+                          
+                          {/* TB1 - Direct Encounter */}
                           <div className="flex items-center gap-1">
-                            <span className="text-slate-500">TB:</span>
+                            <span className="text-slate-500">TB1:</span>
+                            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#ffd744] to-[#ffe5b3]">
+                              {winner.tb1.toFixed(1)}
+                            </span>
+                          </div>
+                          
+                          {/* TB2 - Buchholz */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-500">TB2:</span>
                             <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#568eff] to-[#a0c3ff]">
-                              {winner.tb.toFixed(1)}
+                              {winner.tb2.toFixed(1)}
                             </span>
                           </div>
                         </div>
