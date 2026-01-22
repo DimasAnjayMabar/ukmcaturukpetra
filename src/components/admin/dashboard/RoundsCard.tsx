@@ -1,3 +1,4 @@
+// RoundsCard.tsx - UPDATED: Fixed for correct score table schema with pertemuan_id
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, } from 'recharts';
 import { useState, useEffect, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -27,22 +28,22 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
     }
   }, [pertemuanId]);
 
-  // NEW: Function to calculate and update top winners
-  const updateTopWinners = (playersData: any[]) => {
-    if (playersData.length === 0) {
+  // Function to calculate and update top winners using score table
+  const updateTopWinners = (playerScores: any[]) => {
+    if (playerScores.length === 0) {
       setTopWinners([]);
       return;
     }
 
-    // Sort players by: total_score DESC, tb2_buchholz DESC
-    const sortedPlayers = [...playersData].sort((a, b) => {
-      // Primary: total_score
+    // Sort players by: total_score DESC, buchholz DESC
+    const sortedPlayers = [...playerScores].sort((a, b) => {
+      // Primary: total_score from score table
       if (b.total_score !== a.total_score) {
         return (b.total_score || 0) - (a.total_score || 0);
       }
       
-      // Secondary: tb2_buchholz
-      return (b.tb2_buchholz || 0) - (a.tb2_buchholz || 0);
+      // Secondary: buchholz from score table
+      return (b.buchholz || 0) - (a.buchholz || 0);
     });
 
     // Take top 6
@@ -50,14 +51,17 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       rank: index + 1,
       name: player.name,
       score: player.total_score || 0,
-      tb: player.tb2_buchholz || 0
+      tb: player.buchholz || 0,
+      userId: player.user_id
     }));
 
     setTopWinners(top6);
   };
 
+  // Fetch players with their scores from the score table using pertemuan_id
   const fetchPlayers = async () => {
     try {
+      // 1. Get attendance
       const { data: attendanceData, error: attendanceError } = await supabase
         .from("kehadiran")
         .select("user_id")
@@ -69,28 +73,63 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       const userIds = attendanceData?.map(a => a.user_id) || [];
       
       if (userIds.length > 0) {
+        // 2. Get user profiles
         const { data: userData, error: userError } = await supabase
           .from("user_profile")
-          .select("id, name, nrp, role, email, total_score, tb2_buchholz")
+          .select("id, name, nrp, role, email")
           .in("id", userIds);
 
         if (userError) throw userError;
 
-        const playersData: SwissPlayer[] = (userData || []).map(user => ({
+        // 3. Get tournament scores from score table using pertemuan_id
+        const { data: scoreData, error: scoreError } = await supabase
+          .from("score")
+          .select("user_id, total_score, buchholz, direct_encounter")
+          .eq("pertemuan_id", parseInt(pertemuanId)) // Changed to pertemuan_id
+          .in("user_id", userIds);
+
+        if (scoreError) throw scoreError;
+
+        // Create a map of scores by user_id
+        const scoreMap = new Map();
+        scoreData?.forEach(score => {
+          scoreMap.set(score.user_id, {
+            total_score: score.total_score || 0,
+            buchholz: score.buchholz || 0,
+            direct_encounter: score.direct_encounter || 0
+          });
+        });
+
+        // Combine user data with scores
+        const playersWithScores = (userData || []).map(user => {
+          const userScore = scoreMap.get(user.id) || {
+            total_score: 0,
+            buchholz: 0,
+            direct_encounter: 0
+          };
+
+          return {
+            ...user,
+            ...userScore
+          };
+        });
+
+        // Create SwissPlayer objects
+        const playersData: SwissPlayer[] = playersWithScores.map(user => ({
           id: user.id,
           name: user.name,
-          score: user.total_score || 0,
-          playedOpponents: [],
+          score: user.total_score, // Use tournament score
+          playedOpponents: [], // This should be populated from tournament matches
           nrp: user.nrp,
           role: user.role,
           email: user.email,
-          tb2: user.tb2_buchholz || 0
+          total_score: user.total_score // Store for reference
         }));
 
         setPlayers(playersData);
         
-        // NEW: Always update top winners when fetching players
-        updateTopWinners(userData || []);
+        // Update top winners with combined data
+        updateTopWinners(playersWithScores);
       } else {
         setTopWinners([]);
       }
@@ -100,92 +139,235 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
     }
   };
 
+  // FIXED: Updated to use score table with pertemuan_id
   const computeAndSaveTB1 = async (pertemuanId: string) => {
     try {
-      // 1️⃣ Ambil semua pemain yang hadir di pertemuan
+      console.log("🏆 Calculating Final Direct Encounter for tournament...");
+      console.log("Pertemuan ID:", pertemuanId);
+      
+      const pertemuanIdNum = parseInt(pertemuanId);
+      if (isNaN(pertemuanIdNum)) {
+        throw new Error(`Invalid pertemuanId: ${pertemuanId}`);
+      }
+      
+      // 1. Get all players attending this tournament
       const { data: attendance, error: attErr } = await supabase
         .from("kehadiran")
         .select("user_id")
         .eq("pertemuan_id", pertemuanId)
         .eq("isAttending", true);
-      if (attErr) throw attErr;
-
-      const userIds = (attendance || []).map((r) => r.user_id);
-      if (userIds.length === 0) return;
-
-      // 2️⃣ Ambil skor total untuk setiap pemain
-      const { data: users, error: usersErr } = await supabase
-        .from("user_profile")
-        .select("id, total_score")
-        .in("id", userIds);
-      if (usersErr) throw usersErr;
-
-      // 3️⃣ Kelompokkan pemain berdasarkan total_score
-      const groups = new Map<number, string[]>();
-      users.forEach((u) => {
-        const s = Number(u.total_score || 0);
-        if (!groups.has(s)) groups.set(s, []);
-        groups.get(s)!.push(u.id);
-      });
-
-      // 4️⃣ Inisialisasi map hasil TB1
-      const tb1Map = new Map<string, number>();
-
-      for (const [score, group] of groups.entries()) {
-        if (group.length === 1) {
-          tb1Map.set(group[0], 0);
-          continue;
-        }
-
-        const groupSet = new Set(group);
-
-        // Ambil semua match antar pemain di grup ini
-        const { data: matches, error: matchErr } = await supabase
-          .from("turnamen")
-          .select("pemain_1_id, pemain_2_id, hasil_pemain_1, hasil_pemain_2")
-          .eq("pertemuan_id", parseInt(pertemuanId));
-
-        if (matchErr) throw matchErr;
-
-        const headToHead = (matches || []).filter(
-          (m) =>
-            m.pemain_1_id &&
-            m.pemain_2_id &&
-            groupSet.has(m.pemain_1_id) &&
-            groupSet.has(m.pemain_2_id)
-        );
-
-        // Inisialisasi TB1 per pemain di grup
-        group.forEach((pid) => tb1Map.set(pid, 0));
-
-        // Hitung TB1 berdasarkan hasil head-to-head
-        headToHead.forEach((m) => {
-          const p1 = m.pemain_1_id;
-          const p2 = m.pemain_2_id;
-          const r1 = Number(m.hasil_pemain_1 ?? 0);
-          const r2 = Number(m.hasil_pemain_2 ?? 0);
-
-          tb1Map.set(p1, (tb1Map.get(p1) || 0) + r1);
-          tb1Map.set(p2, (tb1Map.get(p2) || 0) + r2);
-        });
+      
+      if (attErr) {
+        console.error("Error fetching attendance:", attErr);
+        throw attErr;
       }
 
-      // 5️⃣ Update ke tabel user_profile
-      const updatePromises = Array.from(tb1Map.entries()).map(([pid, tb1]) =>
-        supabase
-          .from("user_profile")
-          .update({ tb1_direct_encounter: tb1 })
-          .eq("id", pid)
-      );
+      const userIds = (attendance || []).map((r) => r.user_id);
+      console.log("Total players from attendance:", userIds.length);
+      
+      if (userIds.length === 0) {
+        console.log("⚠️ No players found");
+        return;
+      }
 
-      await Promise.all(updatePromises);
-      console.log("✅ TB1 Direct Encounter berhasil dihitung dan disimpan.");
+      // 2. Get tournament scores from score table using pertemuan_id
+      const { data: tournamentScores, error: scoresErr } = await supabase
+        .from("score")
+        .select("user_id, total_score")
+        .eq("pertemuan_id", pertemuanIdNum) // Changed to pertemuan_id
+        .in("user_id", userIds);
+      
+      if (scoresErr) {
+        console.error("Error fetching tournament scores:", scoresErr);
+        throw scoresErr;
+      }
+
+      console.log("Total players with tournament scores:", tournamentScores?.length);
+
+      // 3. Get user names for display
+      const { data: users, error: usersErr } = await supabase
+        .from("user_profile")
+        .select("id, name")
+        .in("id", userIds);
+      
+      if (usersErr) {
+        console.error("Error fetching users:", usersErr);
+        throw usersErr;
+      }
+
+      const userMap = new Map();
+      users?.forEach(user => {
+        userMap.set(user.id, user.name);
+      });
+
+      // 4. Reset all TB1 (direct_encounter) to 0 in score table
+      const resetPromises = userIds.map(userId =>
+        supabase
+          .from("score")
+          .update({ direct_encounter: 0 })
+          .eq("user_id", userId)
+          .eq("pertemuan_id", pertemuanIdNum) // Changed to pertemuan_id
+      );
+      await Promise.all(resetPromises);
+      console.log(`✅ Reset TB1 to 0 for ${userIds.length} players`);
+
+      // 5. Group players by total_score from score table
+      const groups = new Map<number, any[]>();
+      tournamentScores?.forEach((score) => {
+        const userName = userMap.get(score.user_id) || "Unknown";
+        const scoreValue = Number(score.total_score || 0);
+        if (!groups.has(scoreValue)) groups.set(scoreValue, []);
+        groups.get(scoreValue)!.push({
+          id: score.user_id,
+          name: userName,
+          total_score: scoreValue
+        });
+      });
+
+      console.log("\n📊 DETECTED SCORE GROUPS:");
+      let twoPlayerGroups = 0;
+      groups.forEach((players, score) => {
+        console.log(`   Score ${score}: ${players.length} player(s)`);
+        if (players.length === 2) {
+          twoPlayerGroups++;
+          players.forEach(p => console.log(`     - ${p.name} (ID: ${p.id})`));
+        }
+      });
+      console.log(`Total 2-player groups found: ${twoPlayerGroups}`);
+
+      // 6. Process only groups with 2 players
+      for (const [score, players] of groups.entries()) {
+        console.log(`\n=== PROCESSING SCORE ${score} ===`);
+        console.log(`Players: ${players.map(p => p.name).join(', ')}`);
+        
+        if (players.length === 2) {
+          console.log(`✅ FOUND 2-PLAYER GROUP! Calculating DE...`);
+          
+          const player1Id = players[0].id;
+          const player2Id = players[1].id;
+          const player1Name = players[0].name;
+          const player2Name = players[1].name;
+          
+          console.log(`Player 1: ${player1Name} (${player1Id})`);
+          console.log(`Player 2: ${player2Name} (${player2Id})`);
+
+          // 7. Find matches between the two players
+          const { data: matchesBetween, error: matchErr } = await supabase
+            .from("turnamen")
+            .select(`
+              id, round, 
+              pemain_1_id, pemain_1_name, 
+              pemain_2_id, pemain_2_name, 
+              pemenang, hasil_pemain_1, hasil_pemain_2
+            `)
+            .eq("pertemuan_id", pertemuanIdNum)
+            .or(`and(pemain_1_id.eq.${player1Id},pemain_2_id.eq.${player2Id}),and(pemain_1_id.eq.${player2Id},pemain_2_id.eq.${player1Id})`);
+
+          if (matchErr) {
+            console.error(`❌ Query error for players ${player1Id} vs ${player2Id}:`, matchErr);
+            continue;
+          }
+
+          console.log(`🔍 Matches found: ${matchesBetween?.length || 0}`);
+          
+          let player1Score = 0;
+          let player2Score = 0;
+          let matchCount = 0;
+
+          // 8. Calculate head-to-head if matches exist
+          if (matchesBetween && matchesBetween.length > 0) {
+            console.log("📋 Match details:");
+            for (const match of matchesBetween) {
+              matchCount++;
+              
+              // Skip BYE matches
+              const isByeMatch = !match.pemain_2_id || 
+                                match.pemain_2_id === 'BYE' || 
+                                match.pemain_2_name === 'BYE' ||
+                                match.pemain_1_id === 'BYE' || 
+                                match.pemain_1_name === 'BYE';
+              
+              if (isByeMatch) {
+                console.log(`   Match ${match.id}: BYE match, skipping`);
+                continue;
+              }
+
+              console.log(`   Match ${match.id} (Round ${match.round}):`);
+              console.log(`     ${match.pemain_1_name} vs ${match.pemain_2_name}`);
+              console.log(`     Winner: ${match.pemenang}, Scores: ${match.hasil_pemain_1} - ${match.hasil_pemain_2}`);
+              
+              const isPlayer1White = match.pemain_1_id === player1Id;
+              
+              if (match.pemenang === "Tie" || (match.hasil_pemain_1 === 0.5 && match.hasil_pemain_2 === 0.5)) {
+                player1Score += 0.5;
+                player2Score += 0.5;
+                console.log(`     → Result: TIE (0.5 - 0.5)`);
+              } 
+              else if (match.pemenang === (isPlayer1White ? match.pemain_1_name : match.pemain_2_name) ||
+                      (isPlayer1White && match.hasil_pemain_1 === 1) ||
+                      (!isPlayer1White && match.hasil_pemain_2 === 1)) {
+                player1Score += 1;
+                player2Score += 0;
+                console.log(`     → Result: ${isPlayer1White ? match.pemain_1_name : match.pemain_2_name} WINS (1 - 0)`);
+              }
+              else if (match.pemenang === (isPlayer1White ? match.pemain_2_name : match.pemain_1_name) ||
+                      (isPlayer1White && match.hasil_pemain_2 === 1) ||
+                      (!isPlayer1White && match.hasil_pemain_1 === 1)) {
+                player1Score += 0;
+                player2Score += 1;
+                console.log(`     → Result: ${isPlayer1White ? match.pemain_2_name : match.pemain_1_name} WINS (0 - 1)`);
+              }
+              else if (match.hasil_pemain_1 !== null && match.hasil_pemain_2 !== null) {
+                const p1MatchScore = isPlayer1White ? match.hasil_pemain_1 : match.hasil_pemain_2;
+                const p2MatchScore = isPlayer1White ? match.hasil_pemain_2 : match.hasil_pemain_1;
+                player1Score += p1MatchScore;
+                player2Score += p2MatchScore;
+                console.log(`     → Result: ${p1MatchScore} - ${p2MatchScore} via score`);
+              } else {
+                console.log(`     → Result: UNKNOWN, skipping`);
+              }
+            }
+          } else {
+            console.log(`   ℹ️ Players have never played each other → Both DE = 0`);
+          }
+
+          console.log(`   📊 Final DE Scores for ${player1Name}: ${player1Score}`);
+          console.log(`   📊 Final DE Scores for ${player2Name}: ${player2Score}`);
+          console.log(`   Total matches analyzed: ${matchCount}`);
+
+          // 9. Update TB1 (direct_encounter) in score table using pertemuan_id
+          const update1 = await supabase
+            .from("score")
+            .update({ direct_encounter: player1Score })
+            .eq("user_id", player1Id)
+            .eq("pertemuan_id", pertemuanIdNum); // Changed to pertemuan_id
+          
+          const update2 = await supabase
+            .from("score")
+            .update({ direct_encounter: player2Score })
+            .eq("user_id", player2Id)
+            .eq("pertemuan_id", pertemuanIdNum); // Changed to pertemuan_id
+          
+          if (update1.error || update2.error) {
+            console.error(`❌ Error updating DE in score table:`, update1.error || update2.error);
+          } else {
+            console.log(`   ✅ Updated DE for 2 players with score ${score}`);
+          }
+        } else {
+          console.log(`   ⏭️ Skipping: ${players.length} player(s) → DE = 0 for all`);
+          // Already reset to 0 at the beginning
+        }
+      }
+
+      console.log("\n✅ TB1 Direct Encounter berhasil dihitung dan disimpan di score table.");
+      
     } catch (error) {
-      console.error("❌ Error menghitung TB1:", error);
+      console.error("❌ Error in computeAndSaveTB1:", error);
+      throw error;
     }
   };
 
-  // UPDATED: Function to export final standings - simplified
+  // FIXED: Export using score table data with pertemuan_id
   const exportFinalStandings = async () => {
     if (!maxRounds) {
       alert("Max rounds not set!");
@@ -205,36 +387,66 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
 
     setExporting(true);
     try {
-      // 🧠 Langkah baru: Hitung TB1 sebelum export
+      // Calculate TB1 before export
       await computeAndSaveTB1(pertemuanId);
 
-      // Fetch data pemain terbaru (sudah mengandung TB1 & TB2 terbaru)
-      const { data: userData, error } = await supabase
+      // Fetch the latest data from score table combined with user profiles
+      const { data: userData, error: userError } = await supabase
         .from("user_profile")
-        .select("id, name, nrp, total_score, tb1_direct_encounter, tb2_buchholz")
+        .select("id, name, nrp")
         .in("id", players.map(p => p.id));
 
-      if (error) throw error;
+      if (userError) throw userError;
 
-      // Sort berdasarkan aturan FIDE
-      const sortedPlayers = (userData || []).sort((a, b) => {
-        if (b.total_score !== a.total_score)
-          return (b.total_score || 0) - (a.total_score || 0);
-        if ((b.tb1_direct_encounter || 0) !== (a.tb1_direct_encounter || 0))
-          return (b.tb1_direct_encounter || 0) - (a.tb1_direct_encounter || 0);
-        return (b.tb2_buchholz || 0) - (a.tb2_buchholz || 0);
+      const { data: scoreData, error: scoreError } = await supabase
+        .from("score")
+        .select("user_id, total_score, direct_encounter, buchholz")
+        .eq("pertemuan_id", parseInt(pertemuanId)) // Changed to pertemuan_id
+        .in("user_id", players.map(p => p.id));
+
+      if (scoreError) throw scoreError;
+
+      // Combine user data with scores
+      const combinedData = (userData || []).map(user => {
+        const userScore = (scoreData || []).find(score => score.user_id === user.id) || {
+          total_score: 0,
+          direct_encounter: 0,
+          buchholz: 0
+        };
+
+        return {
+          ...user,
+          ...userScore
+        };
       });
 
-      // Update Top 6
-      updateTopWinners(userData || []);
+      // Sort based on FIDE rules
+      const sortedPlayers = combinedData.sort((a, b) => {
+        // 1. Primary: Total Score (DESC)
+        if (b.total_score !== a.total_score) {
+          return (b.total_score || 0) - (a.total_score || 0);
+        }
+        
+        // 2. Secondary: TB1 Direct Encounter (DESC)
+        if ((b.direct_encounter || 0) !== (a.direct_encounter || 0)) {
+          return (b.direct_encounter || 0) - (a.direct_encounter || 0);
+        }
+        
+        // 3. Tertiary: TB2 Buchholz (DESC)
+        return (b.buchholz || 0) - (a.buchholz || 0);
+      });
 
-      // Siapkan data Excel
+      // Update Top 6 for display
+      updateTopWinners(sortedPlayers);
+
+      // Prepare Excel data
       const excelData = sortedPlayers.map((player, index) => ({
         "Rank": index + 1,
         "Name": player.name,
         "NRP": player.nrp,
         "Points": player.total_score || 0,
-        "Tiebreaker": player.tb2_buchholz || 0,
+        "Direct Encounter": player.direct_encounter || 0,
+        "Buchholz": player.buchholz || 0
       }));
 
       const wb = XLSX.utils.book_new();
@@ -256,7 +468,6 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       const fileName = `Leaderboard ${pertemuanName} ${dateString}.xlsx`;
 
       XLSX.writeFile(wb, fileName);
-      alert("✅ Final standings successfuly exported!");
     } catch (error) {
       console.error("Error exporting final standings:", error);
       alert("Failed to export final standings. Please try again.");
@@ -280,7 +491,6 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
 
         if (error) throw error;
 
-        // Helper function to check if match is BYE
         const isByeMatch = (match: any) => {
           const p2IsBye = !match.pemain_2_id || 
                           match.pemain_2_id === 'BYE' || 
@@ -294,19 +504,13 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
         };
 
         const hasIncompleteMatch = matches?.some(match => {
-          // BYE matches are always considered complete
           if (isByeMatch(match)) {
             return false;
           }
 
-          // For non-BYE matches, check if match has results
-          // Match is complete if:
-          // 1. Has a winner (pemenang is set), OR
-          // 2. Has results recorded (tie: both hasil fields are not null)
           const hasWinner = match.pemenang !== null && match.pemenang !== undefined;
           const hasResults = match.hasil_pemain_1 !== null && match.hasil_pemain_2 !== null;
           
-          // Match is incomplete if it has neither winner nor results
           return !hasWinner && !hasResults;
         });
 
@@ -395,7 +599,6 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       setMaxRounds(rounds);
       setShowMaxRoundsModal(false);
       setMaxRoundsInput("");
-      alert(`Max rounds berhasil diset menjadi ${rounds}`);
     } catch (error) {
       console.error("Error saving max rounds:", error);
       alert("Gagal menyimpan max rounds");
@@ -495,10 +698,8 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
       await Promise.all(insertPromises);
       await fetchExistingRounds();
       
-      // NEW: Refresh players data to update top winners after round creation
+      // Refresh players data to update top winners after round creation
       await fetchPlayers();
-
-      alert(`Round ${nextRoundNumber} berhasil dibuat dengan ${pairings.length} match!`);
     } catch (error) {
       console.error("❌ Error creating round:", error);
       alert("Gagal membuat round. Silakan coba lagi.");
@@ -507,37 +708,252 @@ export default function RoundsCard({ pertemuanId }: { pertemuanId: string }) {
     }
   };
 
+  // FIXED: Updated deleteRound to work with correct score table schema
   const deleteRound = async (roundId: number, roundName: string, roundNumber: number) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus ${roundName}? Slot round ${roundNumber} akan tersedia kembali.`)) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${roundName}? 
+    
+Semua data pertandingan akan dihapus dan skor pemain akan dikurangi sesuai hasil round ini.`)) {
       return;
     }
 
     setLoading(true);
     try {
+      console.log(`🗑️ Deleting round ${roundNumber} (ID: ${roundId})`);
+      
+      // 1. Get all matches in this round
+      const { data: matches, error: matchesError } = await supabase
+        .from("turnamen")
+        .select("*")
+        .eq("round", roundId);
+
+      if (matchesError) throw matchesError;
+
+      console.log(`📋 Found ${matches?.length || 0} matches to delete`);
+
+      // 2. Calculate score deductions before deleting matches
+      if (matches && matches.length > 0) {
+        console.log("📊 Calculating score deductions for this round...");
+        
+        // Create a map of player score deductions
+        const scoreDeductions = new Map<string, number>();
+        
+        matches.forEach(match => {
+          // Calculate score deductions for completed matches
+          if (match.hasil_pemain_1 !== null && match.hasil_pemain_2 !== null) {
+            // Check if it's a BYE match
+            const isByeMatch = !match.pemain_2_id || 
+                              match.pemain_2_id === 'BYE' || 
+                              match.pemain_2_name === 'BYE' ||
+                              match.pemain_1_id === 'BYE' || 
+                              match.pemain_1_name === 'BYE';
+            
+            if (isByeMatch) {
+              // For BYE matches, the non-BYE player gets 1 point
+              if (match.pemain_1_id !== 'BYE' && match.pemain_1_name !== 'BYE') {
+                const current = scoreDeductions.get(match.pemain_1_id) || 0;
+                scoreDeductions.set(match.pemain_1_id, current - 1);
+                console.log(`   BYE: ${match.pemain_1_name} loses 1 point`);
+              } else if (match.pemain_2_id && match.pemain_2_id !== 'BYE' && match.pemain_2_name !== 'BYE') {
+                const current = scoreDeductions.get(match.pemain_2_id) || 0;
+                scoreDeductions.set(match.pemain_2_id, current - 1);
+                console.log(`   BYE: ${match.pemain_2_name} loses 1 point`);
+              }
+            } else {
+              // Regular match - deduct points based on results
+              const currentP1 = scoreDeductions.get(match.pemain_1_id) || 0;
+              const currentP2 = scoreDeductions.get(match.pemain_2_id) || 0;
+              
+              if (match.pemenang === "Tie" || (match.hasil_pemain_1 === 0.5 && match.hasil_pemain_2 === 0.5)) {
+                scoreDeductions.set(match.pemain_1_id, currentP1 - 0.5);
+                scoreDeductions.set(match.pemain_2_id, currentP2 - 0.5);
+                console.log(`   TIE: ${match.pemain_1_name} and ${match.pemain_2_name} lose 0.5 points each`);
+              } else if (match.pemenang === match.pemain_1_name || match.hasil_pemain_1 === 1) {
+                scoreDeductions.set(match.pemain_1_id, currentP1 - 1);
+                scoreDeductions.set(match.pemain_2_id, currentP2 - 0);
+                console.log(`   WIN: ${match.pemain_1_name} loses 1 point, ${match.pemain_2_name} loses 0 points`);
+              } else if (match.pemenang === match.pemain_2_name || match.hasil_pemain_2 === 1) {
+                scoreDeductions.set(match.pemain_1_id, currentP1 - 0);
+                scoreDeductions.set(match.pemain_2_id, currentP2 - 1);
+                console.log(`   WIN: ${match.pemain_1_name} loses 0 points, ${match.pemain_2_name} loses 1 point`);
+              }
+            }
+          }
+        });
+
+        // 3. Update scores in the score table using pertemuan_id
+        if (scoreDeductions.size > 0) {
+          console.log("\n📊 Updating scores in the database:");
+          
+          const updatePromises = Array.from(scoreDeductions.entries()).map(async ([playerId, deduction]) => {
+            try {
+              // Get current score record
+              const { data: currentScore, error: fetchError } = await supabase
+                .from("score")
+                .select("id, total_score")
+                .eq("user_id", playerId)
+                .eq("pertemuan_id", parseInt(pertemuanId)) // Changed to pertemuan_id
+                .maybeSingle();
+
+              if (fetchError) throw fetchError;
+
+              if (currentScore) {
+                const newTotalScore = Math.max(0, (currentScore.total_score || 0) + deduction); // deduction is negative
+                
+                const { error: updateError } = await supabase
+                  .from("score")
+                  .update({ 
+                    total_score: newTotalScore,
+                    direct_encounter: 0 // Reset direct encounter, will be recalculated later
+                  })
+                  .eq("id", currentScore.id);
+
+                if (updateError) throw updateError;
+                
+                const userData = await supabase
+                  .from("user_profile")
+                  .select("name")
+                  .eq("id", playerId)
+                  .single();
+                
+                const playerName = userData.data?.name || playerId;
+                console.log(`   ${playerName}: ${currentScore.total_score || 0} → ${newTotalScore} (${deduction > 0 ? '+' : ''}${deduction})`);
+              } else {
+                console.log(`   Player ${playerId} has no score record, skipping`);
+              }
+            } catch (error) {
+              console.error(`   Error updating score for player ${playerId}:`, error);
+            }
+          });
+
+          await Promise.all(updatePromises);
+        } else {
+          console.log("No completed matches to deduct scores from");
+        }
+      }
+
+      // 4. Delete all matches in this round
       const { error: tournamentError } = await supabase
         .from("turnamen")
         .delete()
         .eq("round", roundId);
 
       if (tournamentError) throw tournamentError;
+      console.log("✅ All matches deleted");
 
+      // 5. Delete the round itself
       const { error: roundError } = await supabase
         .from("round")
         .delete()
         .eq("id", roundId);
 
       if (roundError) throw roundError;
+      console.log("✅ Round deleted");
 
+      // 6. Recalculate Buchholz scores for all players
+      console.log("\n🔄 Recalculating Buchholz scores...");
+      await recalculateBuchholzScores();
+
+      // 7. Recalculate Direct Encounter tiebreakers
+      console.log("🔄 Recalculating Direct Encounter tiebreakers...");
+      await computeAndSaveTB1(pertemuanId);
+
+      // 8. Refresh all data
       await fetchExistingRounds();
-      // NEW: Refresh players data to update top winners after round deletion
       await fetchPlayers();
-      
-      alert(`${roundName} successfully deleted! Round ${roundNumber} can now be readded.`);
+
+      console.log("\n✅ Round deletion completed successfully!");
+
     } catch (error) {
-      console.error("Error deleting round:", error);
+      console.error("❌ Error deleting round:", error);
       alert("Failed to delete round. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // FIXED: Helper function to recalculate Buchholz scores using pertemuan_id
+  const recalculateBuchholzScores = async () => {
+    try {
+      const pertemuanIdNum = parseInt(pertemuanId);
+      
+      // 1. Get all players in this tournament
+      const { data: attendance, error: attErr } = await supabase
+        .from("kehadiran")
+        .select("user_id")
+        .eq("pertemuan_id", pertemuanId)
+        .eq("isAttending", true);
+
+      if (attErr) throw attErr;
+
+      const userIds = (attendance || []).map((r) => r.user_id);
+      if (userIds.length === 0) return;
+
+      // 2. Get current total scores for all players from score table
+      const { data: playerScores, error: scoresErr } = await supabase
+        .from("score")
+        .select("user_id, total_score")
+        .eq("pertemuan_id", pertemuanIdNum) // Changed to pertemuan_id
+        .in("user_id", userIds);
+
+      if (scoresErr) throw scoresErr;
+
+      const playerScoreMap = new Map<string, number>();
+      playerScores?.forEach(score => {
+        playerScoreMap.set(score.user_id, score.total_score || 0);
+      });
+
+      // Initialize missing players with 0
+      userIds.forEach(id => {
+        if (!playerScoreMap.has(id)) {
+          playerScoreMap.set(id, 0);
+        }
+      });
+
+      // 3. Calculate Buchholz for each player
+      for (const playerId of userIds) {
+        let buchholzScore = 0;
+        
+        // Get all matches for this player in this tournament (excluding deleted round)
+        const { data: playerMatches, error: matchesError } = await supabase
+          .from("turnamen")
+          .select("*")
+          .eq("pertemuan_id", pertemuanIdNum)
+          .or(`pemain_1_id.eq.${playerId},pemain_2_id.eq.${playerId}`);
+
+        if (matchesError) throw matchesError;
+
+        // Sum up opponents' scores
+        for (const match of playerMatches || []) {
+          let opponentId = null;
+          
+          if (match.pemain_1_id === playerId && match.pemain_2_id && match.pemain_2_id !== 'BYE') {
+            opponentId = match.pemain_2_id;
+          } else if (match.pemain_2_id === playerId && match.pemain_1_id && match.pemain_1_id !== 'BYE') {
+            opponentId = match.pemain_1_id;
+          }
+
+          if (opponentId) {
+            const opponentScore = playerScoreMap.get(opponentId) || 0;
+            buchholzScore += opponentScore;
+          }
+        }
+
+        // Update Buchholz score in the database using pertemuan_id
+        const { error: updateError } = await supabase
+          .from("score")
+          .update({ buchholz: buchholzScore })
+          .eq("user_id", playerId)
+          .eq("pertemuan_id", pertemuanIdNum); // Changed to pertemuan_id
+
+        if (updateError) {
+          console.error(`Error updating Buchholz for player ${playerId}:`, updateError);
+        }
+      }
+
+      console.log("✅ Buchholz scores recalculated");
+    } catch (error) {
+      console.error("❌ Error recalculating Buchholz scores:", error);
+      throw error;
     }
   };
 

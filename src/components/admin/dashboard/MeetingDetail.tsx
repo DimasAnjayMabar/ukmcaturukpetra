@@ -153,7 +153,6 @@ export const MeetingDetail: React.FC = () => {
       await refreshRegistInAttendance();
       setShowPasswordModal(false);
       setAdminPassword("");
-      alert("✅ Semua peserta berhasil didaftarkan sebagai hadir!");
     } catch (err: any) {
       console.error(err);
       setErrorMsg("Terjadi kesalahan saat mendaftarkan semua peserta.");
