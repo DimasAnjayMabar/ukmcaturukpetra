@@ -806,9 +806,9 @@ export const MeetingDetail: React.FC = () => {
 
         {/* Dual Pane Layout untuk Attendance */}
         {(!meeting.is_tournament || activeTab === "attendance") && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
             {/* Regist In Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
+            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]  min-h-0 overflow-hidden">
               <div className="border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-t-xl flex-shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
@@ -858,8 +858,11 @@ export const MeetingDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="p-6 flex-1 overflow-y-auto overflow-x-hidden">
-                <CheckInData
+              <div
+                className="p-6 flex-1 basis-0 min-h-0 overflow-y-scroll overflow-x-hidden"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >   
+              <CheckInData
                   attendees={meeting.attendees}
                   onScanQR={handleRegistIn}
                   onUpdateAttendance={handleUpdateAttendance}
@@ -869,7 +872,7 @@ export const MeetingDetail: React.FC = () => {
             </div>
 
             {/* Regist Out Pane */}
-            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
+            <div className="bg-white rounded-xl shadow-lg flex flex-col h-[600px] min-h-0 overflow-hidden">
               <div className="border-b border-gray-200 bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-t-xl flex-shrink-0">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
