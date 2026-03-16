@@ -1,4 +1,4 @@
-// PairingPage.tsx - ADDED: Excel export functionality and Search bar
+// PairingPage.tsx - UPDATED: Fixed for correct score table schema
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Save, Trophy, Download, Search } from "lucide-react";
@@ -55,7 +55,6 @@ export default function PairingPage() {
       return player1Name.includes(query) || player2Name.includes(query);
     });
 
-    // NEW: Sort filtered results - regular first, BYE last
     const sortedFiltered = [...filtered].sort((a, b) => {
       const aIsBye = isByeMatch(a);
       const bIsBye = isByeMatch(b);
@@ -108,7 +107,6 @@ export default function PairingPage() {
       return;
     }
 
-    // Use filtered matches if search is active, otherwise use all matches
     const matchesToExport = searchQuery.trim() ? filteredMatches : matches;
 
     if (matchesToExport.length === 0) {
@@ -116,27 +114,37 @@ export default function PairingPage() {
       return;
     }
 
-    // Biarkan seperti semula untuk Excel export (tidak perlu sorting khusus)
     const excelData = matchesToExport.map(match => {
       const p1Score = playerScores.get(match.pemain_1_id) || 0;
       const p2Score = match.pemain_2_id ? (playerScores.get(match.pemain_2_id) || 0) : 0;
       
       let result = "";
+      
       if (isByeMatch(match)) {
-        result = "1 - 0"; // Default for BYE (white wins)
         if (match.pemain_1_id === 'BYE' || match.pemain_1_name === 'BYE') {
-          result = "0 - 1"; // If BYE is player 1, then black wins
+          result = "0 - 1";
+        } else {
+          result = "1 - 0";
         }
-      } else {
+      } 
+      else if (match.pemenang === "Tie" || (match.hasil_pemain_1 === 0.5 && match.hasil_pemain_2 === 0.5)) {
+        result = "0.5 - 0.5";
+      } 
+      else if (match.pemenang === match.pemain_1_name || match.hasil_pemain_1 === 1) {
+        result = "1 - 0";
+      } 
+      else if (match.pemenang === match.pemain_2_name || match.hasil_pemain_2 === 1) {
+        result = "0 - 1";
+      } 
+      else {
         const winner = roundScores.get(match.id);
         if (winner === "tie") {
-          result = "1/2 - 1/2";
+          result = "0.5 - 0.5";
         } else if (winner === match.pemain_1_id) {
           result = "1 - 0";
         } else if (winner === match.pemain_2_id) {
           result = "0 - 1";
         }
-        // If no result yet and before update round, leave empty
       }
 
       return {
@@ -149,55 +157,71 @@ export default function PairingPage() {
       };
     });
 
-    // Create workbook and worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(excelData);
+    const headerInfo = [
+      { A: `Turnamen: ${pertemuanName}` },
+      { A: `Round: ${roundNumber}` },
+      { A: `Status: ${isRoundUpdated ? 'Sudah di-update' : 'Belum di-update'}` },
+      { A: `Tanggal Export: ${new Date().toLocaleDateString('id-ID')}` },
+      { A: '' }
+    ];
 
-    // Set column widths
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData, { origin: 'A6' });
+    XLSX.utils.sheet_add_json(ws, headerInfo, { origin: 'A1' });
+
     const colWidths = [
-      { wch: 8 },  // Board
-      { wch: 25 }, // White
-      { wch: 8 },  // Pts.
-      { wch: 12 }, // Result (adjusted for longer text)
-      { wch: 8 },  // Pts.
-      { wch: 25 }  // Black
+      { wch: 8 },
+      { wch: 25 },
+      { wch: 8 },
+      { wch: 12 },
+      { wch: 8 },
+      { wch: 25 }
     ];
     ws['!cols'] = colWidths;
 
-    // Add bold headers and borders
+    const headerStyles = {
+      font: { bold: true, size: 12 },
+      fill: { fgColor: { rgb: "E8F4FD" } }
+    };
+
+    for (let i = 1; i <= headerInfo.length; i++) {
+      const cellAddress = `A${i}`;
+      if (!ws[cellAddress]) continue;
+      
+      if (!ws[cellAddress].s) ws[cellAddress].s = {};
+      Object.assign(ws[cellAddress].s, headerStyles);
+    }
+
     if (ws['!ref']) {
       const range = XLSX.utils.decode_range(ws['!ref']);
+      const dataStartRow = 5;
       
-      // Make headers bold and add borders
       for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+        const cellAddress = XLSX.utils.encode_cell({ r: dataStartRow, c: C });
         if (!ws[cellAddress]) continue;
         
-        // Bold headers
         ws[cellAddress].s = {
-          font: { bold: true },
+          font: { bold: true, color: { rgb: "FFFFFF" } },
           alignment: { horizontal: 'center' },
           border: {
             top: { style: 'thin' },
             left: { style: 'thin' },
             bottom: { style: 'thin' },
             right: { style: 'thin' }
-          }
+          },
+          fill: { fgColor: { rgb: "2E7D32" } }
         };
       }
       
-      // Add borders to all data cells
-      for (let R = range.s.r; R <= range.e.r; ++R) {
+      for (let R = dataStartRow + 1; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
           const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
           if (!ws[cellAddress]) continue;
           
-          // Ensure cell has style object
           if (!ws[cellAddress].s) {
             ws[cellAddress].s = {};
           }
           
-          // Add borders
           ws[cellAddress].s.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -205,42 +229,112 @@ export default function PairingPage() {
             right: { style: 'thin' }
           };
           
-          // Center align Board and Result columns
-          if (C === 0 || C === 3) { // Board and Result columns
+          if (C === 0 || C === 3) {
             ws[cellAddress].s.alignment = { horizontal: 'center' };
+          }
+          
+          const matchIndex = R - dataStartRow - 1;
+          if (matchIndex < matchesToExport.length) {
+            const match = matchesToExport[matchIndex];
+            if (isByeMatch(match)) {
+              ws[cellAddress].s.fill = { fgColor: { rgb: "FFF3E0" } };
+            }
           }
         }
       }
     }
 
-    // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, "Pairing");
 
-    // Generate file name
     const status = isRoundUpdated ? "after" : "before";
     const date = new Date().toISOString().split('T')[0];
     const searchSuffix = searchQuery.trim() ? `_search_${searchQuery}` : "";
     const fileName = `Pairing Round ${roundNumber} ${pertemuanName} ${status}${searchSuffix} ${date}.xlsx`;
 
-    // Export to Excel
     XLSX.writeFile(wb, fileName);
   };
 
+  // FIXED: Updated for correct score table schema (pertemuan_id instead of turnamen_id)
+  const getAndUpdateScoreRecord = async (userId: string, scoreIncrement: number = 0) => {
+    try {
+      const pertemuanIdNum = parseInt(pertemuanId!);
+      
+      // Check if score record already exists
+      const { data: existingScore, error: fetchError } = await supabase
+        .from("score")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("pertemuan_id", pertemuanIdNum) // Changed to pertemuan_id
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
+      // If score record exists, update it with accumulated score
+      if (existingScore) {
+        const currentScore = existingScore.total_score || 0;
+        const newTotalScore = currentScore + scoreIncrement;
+        
+        const { data: updatedScore, error: updateError } = await supabase
+          .from("score")
+          .update({
+            total_score: newTotalScore
+          })
+          .eq("id", existingScore.id)
+          .select()
+          .single();
+          
+        if (updateError) throw updateError;
+        return updatedScore;
+      }
+
+      // Otherwise create a new score record with the initial score
+      const { data: newScore, error: createError } = await supabase
+        .from("score")
+        .insert({
+          user_id: userId,
+          pertemuan_id: pertemuanIdNum, // Changed to pertemuan_id
+          total_score: scoreIncrement,
+          direct_encounter: 0,
+          buchholz: 0
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      return newScore;
+
+    } catch (error) {
+      console.error("Error getting/updating score record:", error);
+      throw error;
+    }
+  };
+
+  // FIXED: Fetch player scores from score table using pertemuan_id
   const fetchPlayerScores = async () => {
     try {
       const playerIds = getAllPlayerIds();
       if (playerIds.length === 0) return;
 
-      const { data: userData, error } = await supabase
-        .from("user_profile")
-        .select("id, total_score")
-        .in("id", playerIds);
+      const { data: scoreData, error } = await supabase
+        .from("score")
+        .select("user_id, total_score")
+        .eq("pertemuan_id", parseInt(pertemuanId!)) // Changed to pertemuan_id
+        .in("user_id", playerIds);
 
       if (error) throw error;
 
       const scoresMap = new Map<string, number>();
-      userData?.forEach(user => {
-        scoresMap.set(user.id, user.total_score || 0);
+      
+      // Set scores for players who have records
+      scoreData?.forEach(score => {
+        scoresMap.set(score.user_id, score.total_score || 0);
+      });
+
+      // For players without scores yet, initialize with 0
+      playerIds.forEach(playerId => {
+        if (!scoresMap.has(playerId)) {
+          scoresMap.set(playerId, 0);
+        }
       });
 
       setPlayerScores(scoresMap);
@@ -258,6 +352,38 @@ export default function PairingPage() {
       }
     });
     return Array.from(playerIds);
+  };
+
+  // Calculate scores for this round only
+  const calculateRoundScores = (): Map<string, number> => {
+    const roundScoreMap = new Map<string, number>();
+    
+    matches.forEach(match => {
+      const winner = roundScores.get(match.id);
+      
+      if (isByeMatch(match)) {
+        // Award 1 point to non-BYE player
+        if (match.pemain_1_id !== 'BYE' && match.pemain_1_name !== 'BYE') {
+          roundScoreMap.set(match.pemain_1_id, 1);
+        } else if (match.pemain_2_id && match.pemain_2_id !== 'BYE' && match.pemain_2_name !== 'BYE') {
+          roundScoreMap.set(match.pemain_2_id, 1);
+        }
+        return;
+      }
+
+      if (winner === "tie") {
+        roundScoreMap.set(match.pemain_1_id, 0.5);
+        roundScoreMap.set(match.pemain_2_id, 0.5);
+      } else if (winner === match.pemain_1_id) {
+        roundScoreMap.set(match.pemain_1_id, 1);
+        roundScoreMap.set(match.pemain_2_id, 0);
+      } else if (winner === match.pemain_2_id) {
+        roundScoreMap.set(match.pemain_1_id, 0);
+        roundScoreMap.set(match.pemain_2_id, 1);
+      }
+    });
+
+    return roundScoreMap;
   };
 
   useEffect(() => {
@@ -287,14 +413,6 @@ export default function PairingPage() {
 
       if (roundError) throw roundError;
 
-      const { data: allRounds, error: roundsError } = await supabase
-        .from("round")
-        .select("id, name")
-        .eq("pertemuan_id", meetingId)
-        .order("name", { ascending: true });
-
-      if (roundsError) throw roundsError;
-
       const roundNumber = roundData?.name || 1;
       setRoundNumber(roundNumber);
       
@@ -305,7 +423,7 @@ export default function PairingPage() {
       const { data: allMatches, error: matchesError } = await supabase
         .from("turnamen")
         .select("*")
-        .eq("pertemuan_id", meetingId)
+        .eq("pertemuan_id", parseInt(meetingId))
         .eq("round", roundId)
         .order("match_ke", { ascending: true });
 
@@ -323,17 +441,15 @@ export default function PairingPage() {
         return;
       }
 
-      // NEW: Sort matches - regular matches first, BYE matches at the end
+      // Sort matches - regular matches first, BYE matches at the end
       const sortedMatches = [...allMatches].sort((a, b) => {
         const aIsBye = isByeMatch(a);
         const bIsBye = isByeMatch(b);
         
-        // Jika kedua match sama (keduanya BYE atau keduanya regular), urutkan berdasarkan match_ke
         if (aIsBye === bIsBye) {
           return a.match_ke - b.match_ke;
         }
         
-        // Regular matches first, BYE matches last
         return aIsBye ? 1 : -1;
       });
 
@@ -343,14 +459,7 @@ export default function PairingPage() {
       );
       setIsRoundUpdated(hasSavedResults);
 
-      // Log every match in detail
-      console.log("📋 SORTED MATCHES (BYE at bottom):");
-      sortedMatches.forEach((match, idx) => {
-        const isBye = isByeMatch(match);
-        console.log(`   ${idx + 1}. Board ${match.match_ke}${isBye ? ' [BYE]' : ''}: ${match.pemain_1_name} vs ${match.pemain_2_name}`);
-      });
-
-      // Build scores map dengan sorted matches
+      // Build scores map with sorted matches
       const scores = new Map<number, string>();
       let byeCount = 0;
       let savedCount = 0;
@@ -415,8 +524,9 @@ export default function PairingPage() {
       });
 
       console.log("\n⚙️ Setting React states...");
-      setMatches(sortedMatches); // Gunakan sortedMatches yang sudah diurutkan
-      setFilteredMatches(sortedMatches); // Initialize filtered matches dengan sorted matches
+      setMatches(sortedMatches);
+      setFilteredMatches(sortedMatches);
+      setRoundScores(scores);
       
       setTimeout(() => {
         console.log("✅ Initial load complete, enabling render");
@@ -506,44 +616,7 @@ export default function PairingPage() {
     return completed;
   };
 
-  const calculateNewScores = () => {
-    const scoreUpdates = new Map<string, number>();
-    
-    matches.forEach(match => {
-      const winner = roundScores.get(match.id);
-      const currentP1Score = (match.pemain_1_id && match.pemain_1_id !== 'BYE') 
-        ? playerScores.get(match.pemain_1_id) || 0 
-        : 0;
-      const currentP2Score = (match.pemain_2_id && match.pemain_2_id !== 'BYE' && !isByeMatch(match))
-        ? playerScores.get(match.pemain_2_id) || 0 
-        : 0;
-
-      if (isByeMatch(match)) {
-        // Award point to the non-BYE player
-        if (match.pemain_1_id !== 'BYE' && match.pemain_1_name !== 'BYE') {
-          scoreUpdates.set(match.pemain_1_id, currentP1Score + 1);
-        } else if (match.pemain_2_id && match.pemain_2_id !== 'BYE' && match.pemain_2_name !== 'BYE') {
-          scoreUpdates.set(match.pemain_2_id, currentP2Score + 1);
-        }
-        return;
-      }
-
-      if (winner === "tie") {
-        scoreUpdates.set(match.pemain_1_id, currentP1Score + 0.5);
-        scoreUpdates.set(match.pemain_2_id, currentP2Score + 0.5);
-      } else if (winner === match.pemain_1_id) {
-        scoreUpdates.set(match.pemain_1_id, currentP1Score + 1);
-        scoreUpdates.set(match.pemain_2_id, currentP2Score + 0);
-      } else if (winner === match.pemain_2_id) {
-        scoreUpdates.set(match.pemain_1_id, currentP1Score + 0);
-        scoreUpdates.set(match.pemain_2_id, currentP2Score + 1);
-      }
-    });
-
-    return scoreUpdates;
-  };
-
-  // NEW: Function to calculate Buchholz scores for all players (called every round)
+  // FIXED: Calculate Buchholz scores using pertemuan_id
   const calculateBuchholzScores = async (): Promise<Map<string, number>> => {
     try {
       const buchholzMap = new Map<string, number>();
@@ -551,25 +624,32 @@ export default function PairingPage() {
 
       if (playerIds.length === 0) return buchholzMap;
 
-      // Get current total scores for all players
+      // Get current total scores from the score table for this tournament
       const { data: playerScoresData, error } = await supabase
-        .from("user_profile")
-        .select("id, total_score")
-        .in("id", playerIds);
+        .from("score")
+        .select("user_id, total_score")
+        .eq("pertemuan_id", parseInt(pertemuanId!)) // Changed to pertemuan_id
+        .in("user_id", playerIds);
 
       if (error) throw error;
 
       const playerScoreMap = new Map<string, number>();
-      playerScoresData?.forEach(player => {
-        playerScoreMap.set(player.id, player.total_score || 0);
+      playerScoresData?.forEach(score => {
+        playerScoreMap.set(score.user_id, score.total_score || 0);
+      });
+
+      // For players without score records, use 0
+      playerIds.forEach(id => {
+        if (!playerScoreMap.has(id)) {
+          playerScoreMap.set(id, 0);
+        }
       });
 
       // Calculate Buchholz for each player
       for (const playerId of playerIds) {
         let buchholzScore = 0;
-        let opponentCount = 0;
         
-        // Get all matches for this player in this meeting
+        // Get all matches for this player in this tournament
         const { data: playerMatches, error: matchesError } = await supabase
           .from("turnamen")
           .select("*")
@@ -591,14 +671,7 @@ export default function PairingPage() {
           if (opponentId) {
             const opponentScore = playerScoreMap.get(opponentId) || 0;
             buchholzScore += opponentScore;
-            opponentCount++;
           }
-        }
-
-        // For players with fewer opponents, adjust Buchholz score
-        if (opponentCount > 0) {
-          // Optional: You can apply adjustments here if needed
-          // For example: buchholzScore = buchholzScore * (expectedRounds / opponentCount)
         }
 
         buchholzMap.set(playerId, buchholzScore);
@@ -623,17 +696,17 @@ export default function PairingPage() {
     try {
       console.log("💾 SAVING...");
 
+      // 1. Update match results in turnamen table
       const updatePromises = matches.map(async (match) => {
         const winner = roundScores.get(match.id);
         
         if (isByeMatch(match)) {
           console.log(`💾 Saving BYE: Match ${match.id}`);
           
-          // Determine the non-BYE player
           let byeWinner = null;
           
           if (match.pemain_1_id !== 'BYE' && match.pemain_1_name !== 'BYE') {
-            byeWinner = match.pemain_1_id;
+            byeWinner = match.pemain_1_name;
             return supabase
               .from("turnamen")
               .update({
@@ -643,7 +716,7 @@ export default function PairingPage() {
               })
               .eq("id", match.id);
           } else if (match.pemain_2_id && match.pemain_2_id !== 'BYE' && match.pemain_2_name !== 'BYE') {
-            byeWinner = match.pemain_2_id;
+            byeWinner = match.pemain_2_name;
             return supabase
               .from("turnamen")
               .update({
@@ -659,7 +732,7 @@ export default function PairingPage() {
           return supabase
             .from("turnamen")
             .update({
-              pemenang: null,
+              pemenang: "Tie",
               hasil_pemain_1: 0.5,
               hasil_pemain_2: 0.5
             })
@@ -668,7 +741,7 @@ export default function PairingPage() {
           return supabase
             .from("turnamen")
             .update({
-              pemenang: match.pemain_1_id,
+              pemenang: match.pemain_1_name,
               hasil_pemain_1: 1,
               hasil_pemain_2: 0
             })
@@ -677,7 +750,7 @@ export default function PairingPage() {
           return supabase
             .from("turnamen")
             .update({
-              pemenang: match.pemain_2_id,
+              pemenang: match.pemain_2_name,
               hasil_pemain_1: 0,
               hasil_pemain_2: 1
             })
@@ -687,30 +760,36 @@ export default function PairingPage() {
 
       await Promise.all(updatePromises);
 
-      const scoreUpdates = calculateNewScores();
-      
+      // 2. Calculate scores for this round
+      const roundScoreMap = calculateRoundScores();
       const buchholzScores = await calculateBuchholzScores();
       
-      const userUpdatePromises = Array.from(scoreUpdates.entries()).map(async ([playerId, newScore]) => {
+      console.log("📊 Scores for this round:", Object.fromEntries(roundScoreMap));
+      
+      // 3. Update score table with accumulated scores
+      const scoreUpdatePromises = Array.from(roundScoreMap.entries()).map(async ([playerId, increment]) => {
         const buchholzScore = buchholzScores.get(playerId) || 0;
         
+        // Get and update the score record (accumulates scores)
+        const scoreRecord = await getAndUpdateScoreRecord(playerId, increment);
+        
+        // Update buchholz separately
         return supabase
-          .from("user_profile")
+          .from("score")
           .update({
-            total_score: newScore,
-            // TB1 Direct Encounter tetap 0, akan dihitung hanya di akhir
-            tb1_direct_encounter: 0,
-            // TB2 Buchholz diupdate setiap round
-            tb2_buchholz: buchholzScore
+            buchholz: buchholzScore,
+            direct_encounter: 0 // Reset direct encounter, will be recalculated when tournament ends
           })
-          .eq("id", playerId);
+          .eq("id", scoreRecord.id);
       });
 
-      await Promise.all(userUpdatePromises);
-
+      await Promise.all(scoreUpdatePromises);
+      
+      // 4. Refresh player scores to show updated values
+      await fetchPlayerScores();
+      
       console.log("✅ SAVE COMPLETE");
       setIsRoundUpdated(true);
-      alert("Round berhasil diupdate dan scores telah diperbarui!");
       navigate(-1);
     } catch (error) {
       console.error("❌ SAVE ERROR:", error);
@@ -720,7 +799,6 @@ export default function PairingPage() {
     }
   };
 
-  // Di PairingPage.tsx
   const handleBack = () => {
     if (pertemuanId) {
       navigate(`/admin/pertemuan/${pertemuanId}?tab=matches`);
@@ -776,7 +854,6 @@ export default function PairingPage() {
                 <h2 className="text-xl font-bold text-gray-800">Tournament Bracket</h2>
               </div>
               
-              {/* Export Excel Button */}
               <button
                 onClick={exportToExcel}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
@@ -786,7 +863,6 @@ export default function PairingPage() {
               </button>
             </div>
             
-            {/* NEW: Search Bar */}
             <div className="mb-4">
               <div className="relative max-w-md">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -835,9 +911,8 @@ export default function PairingPage() {
             </div>
           </div>
           
-
           <Bracket
-            matches={filteredMatches} // Pass filtered matches to Bracket component
+            matches={filteredMatches}
             roundScores={roundScores}
             onSetWinner={handleSetWinner}
             onSetTie={handleSetTie}
@@ -864,7 +939,6 @@ export default function PairingPage() {
               )}
             </button>
 
-            {/* Alternative Export Button */}
             <button
               onClick={exportToExcel}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

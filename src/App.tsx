@@ -20,6 +20,7 @@ import ChessClock from './components/peserta/feature/ChessClock';
 import AttendanceList from './components/peserta/feature/DaftarKehadiran';
 import Scoreboard from './components/peserta/feature/Scoreboard';
 import PairingPage from './components/admin/dashboard/PairingPage';
+import { AdminLayout } from './components/admin/layout/AdminLayout';
 
 function App() {
   useEffect(() => {
@@ -42,8 +43,25 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         
-        {/* admin */}
+
+        {/* admin - AUTH routes (NO sidebar) */}
         <Route path="/admin/login" element={<LoginPage />} />
+        <Route path='/admin/registrasi' element={<RegisterPage />} />
+        <Route path='/admin/verifikasi-email-registrasi' element={<RegistrationSuccess />} />
+        <Route path='/admin/verifikasi-registrasi-sukses' element={<EmailVerificationSuccess />} />
+        <Route path="/admin/verifikasi-email-forgot-password" element={<VerifyForgotPassword />}/>
+        <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+
+        {/* 2. CREATE A LAYOUT ROUTE for protected admin pages */}
+        <Route element={<AdminLayout />}>
+          <Route path='/admin/dashboard' element={<Dashboard />} />
+          <Route path="/admin/pertemuan/:id" element={<MeetingDetail />} />
+          <Route path="/admin/pairing/:id" element={<PairingPage />} />
+          {/* Add any other admin pages that need the sidebar here */}
+        </Route>
+
+        {/* admin */}
+        {/* <Route path="/admin/login" element={<LoginPage />} />
         <Route path='/admin/registrasi' element={<RegisterPage />} />
         <Route path='/admin/verifikasi-email-registrasi' element={<RegistrationSuccess />} />
         <Route path='/admin/verifikasi-registrasi-sukses' element={<EmailVerificationSuccess />} />
@@ -51,7 +69,7 @@ function App() {
         <Route path="/admin/pertemuan/:id" element={<MeetingDetail />} />
         <Route path="/admin/verifikasi-email-forgot-password" element={<VerifyForgotPassword />}/>
         <Route path="/admin/forgot-password" element={<ForgotPassword />} />
-        <Route path="/admin/pairing/:id" element={<PairingPage/>}></Route>
+        <Route path="/admin/pairing/:id" element={<PairingPage/>}></Route> */}
 
         {/* peserta */}
         <Route path='/peserta/login' element={<LoginPagePeserta/>} />

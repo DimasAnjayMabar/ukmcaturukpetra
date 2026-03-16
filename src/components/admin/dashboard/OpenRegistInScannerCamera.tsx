@@ -130,10 +130,10 @@ export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
 
       const statusText =
         data.status === "inserted"
-          ? "Kehadiran dicatat"
+          ? "Attendance listed"
           : data.status === "updated"
-          ? "Kehadiran diperbarui"
-          : "Berhasil";
+          ? "Attendance updated"
+          : "Success";
 
       setSnackbarMsg(`✅ ${statusText} - ${userName}${userNrp ? ` (${userNrp})` : ""}`);
 
@@ -213,9 +213,9 @@ export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">Regist In Peserta</h2>
+        <div className="bg-gradient-to-b from-[#0c1015] to-[#2f3054] text-[#f6fbff] rounded-2xl max-w-md w-full overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-slate-500">
+            <h2 className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-tl from-[#44ff6f] to-[#b3ffe5]">Register In Scanner</h2>
             <button
               onClick={() => {
                 onClose();
@@ -232,7 +232,7 @@ export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
               <div className="flex items-start gap-2 bg-red-50 text-red-700 p-3 rounded">
                 <AlertTriangle className="mt-0.5" size={18} />
                 <div>
-                  <p className="font-medium">Gagal</p>
+                  <p className="font-medium">Failed</p>
                   <p className="text-sm">{scanError}</p>
                 </div>
               </div>
@@ -243,41 +243,45 @@ export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
                 <div
                   id={containerId}
                   style={{ width: "100%", aspectRatio: "1 / 1" }}
-                  className="rounded border border-gray-200 overflow-hidden"
+                  className="rounded border border-slate-500 overflow-hidden mb-2"
                 />
-                <p className="mt-3 text-sm text-gray-500 text-center">
-                  Arahkan kamera ke QR dinamis milik peserta. Scanner akan dijeda otomatis setelah scan berhasil.
-                </p>
                 {isProcessing && (
-                  <div className="mt-2 flex items-center gap-2 text-blue-600">
+                  <div className="mt-2 flex items-center gap-2 text-[#679dfb]">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Memproses...</span>
+                    <span className="text-sm">Processing...</span>
                   </div>
                 )}
                 {cooldownRemaining > 0 && !isProcessing && (
                   <div className="mt-2 flex items-center gap-2 text-orange-600">
                     <div className="h-4 w-4 rounded-full border-2 border-orange-600 border-t-transparent animate-spin" />
                     <span className="text-sm font-medium">
-                      Scanner dijeda: {cooldownRemaining}s
+                      Scanner paused: {cooldownRemaining}s
                     </span>
                   </div>
                 )}
                 {cooldownRemaining === 0 && !isProcessing && (
-                  <div className="mt-2 flex items-center gap-2 text-green-600">
+                  <div className="mt-2 flex items-center gap-2 text-[#4dffac]">
                     <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-sm">Scanner siap</span>
+                    <span className="text-sm">Ready</span>
                   </div>
                 )}
+
+                <p className="mt-2 text-sm text-slate-400 text-center">
+                  Point your camera towards the participant's QR code.
+                </p>
+                <p className="text-sm text-slate-500 text-center">
+                  The scanner will pause after a successful scan.
+                </p>
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex pt-2">
               <button
                 type="button"
                 onClick={() => onClose()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-gradient-to-tl from-[#0600a8] to-[#679dfb] text-[#fefff9] rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Tutup
+                Close
               </button>
             </div>
           </div>
@@ -290,7 +294,7 @@ export const OpenRegistInScannerCamera: React.FC<QRCodeModalProps> = ({
           <div
             className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${
               snackbarMsg.startsWith("✅")
-                ? "bg-green-600 text-white"
+                ? "bg-[#01b82c] text-white"
                 : "bg-red-600 text-white"
             }`}
           >
