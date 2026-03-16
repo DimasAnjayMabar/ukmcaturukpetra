@@ -1,15 +1,13 @@
-
-// swiss.ts - Minimal update for clarity
+// swiss.ts
 export interface SwissPlayer {
   id: string;
   name: string;
-  score: number; // This should be tournament-specific score
+  score: number;
   playedOpponents: string[];
   nrp?: string;
   role?: string;
-  total_score?: number; // Tournament total score (same as score)
+  total_score?: number;
   email?: string;
-  tb2?: number; // Buchholz from tournament
 }
 
 interface Match {
