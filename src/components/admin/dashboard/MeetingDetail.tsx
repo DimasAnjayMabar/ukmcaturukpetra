@@ -57,7 +57,6 @@ export const MeetingDetail: React.FC = () => {
   const [processingBulkAction, setProcessingBulkAction] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const location = useLocation();
-  const locationState = location.state as LocationState;
   const [searchParams, setSearchParams] = useSearchParams();
 
 
@@ -131,7 +130,7 @@ export const MeetingDetail: React.FC = () => {
       // Insert batch (gunakan upsert untuk cegah duplikasi)
       await supabase
       .from("kehadiran")
-      .insert(insertData, { ignoreDuplicates: true });
+      .upsert(insertData);
 
       await refreshRegistInAttendance();
       setShowPasswordModal(false);
@@ -616,7 +615,7 @@ export const MeetingDetail: React.FC = () => {
         setUsers(usersMap);
 
         let matchesData: TournamentMatch[] = [];
-        if (meetingData.is_tournament) {
+        if (meetingData.is_tournament && id) {
           matchesData = await fetchTournamentMatches(id);
         }
 
