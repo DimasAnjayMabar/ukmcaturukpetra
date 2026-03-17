@@ -22,3 +22,8 @@ node_modules
 *.njsproj
 *.sln
 *.sw?
+
+venv
+checking_participant.py
+data.xlsx
+missing_nrp.xlsx
