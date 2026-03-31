@@ -351,7 +351,7 @@ const RegisterPagePeserta: React.FC = () => {
                 name="nrp"
                 type="text"
                 required
-                value={formData.nrp}
+                value={formData.nrp.toLowerCase()}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#0c1015] text-[#DADBD3] placeholder-[#DADBD3]/50 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] transition-all duration-300"
                 placeholder="NRP (e.g., c14230012)"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LogOut, AlertCircle, Menu, X } from 'lucide-react';
+import { User, LogOut, AlertCircle, Menu, X, Pencil, Loader2, Check } from 'lucide-react';
 import { supabase } from '../../../db_client/client';
 import { UserProfile } from '../../../types';
 
@@ -9,7 +9,7 @@ interface NavbarProps {
   isLoggedIn?: boolean;
   userProfile?: UserProfile | null;
   onNavigateToSection?: (sectionId: string) => void;
-  isPesertaFeaturesPage?: boolean; // 👈 new prop to detect Peserta Features page
+  isPesertaFeaturesPage?: boolean;
 }
 
 export default function Navbar({
@@ -24,6 +24,13 @@ export default function Navbar({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Change Name state
+  const [showChangeNameModal, setShowChangeNameModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [nameUpdateSuccess, setNameUpdateSuccess] = useState(false);
+  const [nameUpdateError, setNameUpdateError] = useState('');
 
   useEffect(() => {
     const controlNavbar = () => {
@@ -56,6 +63,49 @@ export default function Navbar({
     setShowUserMenu(false);
   };
 
+  const openChangeNameModal = () => {
+    setNewName(userProfile?.name || '');
+    setNameUpdateSuccess(false);
+    setNameUpdateError('');
+    setShowChangeNameModal(true);
+    setShowUserMenu(false);
+  };
+
+  const handleChangeName = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      setNameUpdateError('Name cannot be empty.');
+      return;
+    }
+    if (!userProfile?.email) {
+      setNameUpdateError('User profile not found.');
+      return;
+    }
+
+    setIsUpdatingName(true);
+    setNameUpdateError('');
+    try {
+      const { error } = await supabase
+        .from('user_profile')
+        .update({ name: trimmed })
+        .eq('email', userProfile.email);
+
+      if (error) throw error;
+
+      setNameUpdateSuccess(true);
+      // Reload after short delay so user sees success state
+      setTimeout(() => {
+        setShowChangeNameModal(false);
+        window.location.reload();
+      }, 1200);
+    } catch (err) {
+      console.error('Name update error:', err);
+      setNameUpdateError(err instanceof Error ? err.message : 'Failed to update name.');
+    } finally {
+      setIsUpdatingName(false);
+    }
+  };
+
   return (
     <>
       <nav
@@ -81,7 +131,6 @@ export default function Navbar({
             {/* desktop navlinks */}
             {!isLoggedIn && !isPesertaFeaturesPage && (
               <div className="relative hidden md:flex items-center justify-center flex-1 mx-32 py-4">
-
                 <div className="flex items-center justify-center w-full">
                   <button
                     onClick={() => scrollToSection('visi')}
@@ -89,35 +138,27 @@ export default function Navbar({
                   >
                     Vision
                   </button>
-
                   <div className="flex-1 h-[2px] bg-yellow-400" />
-
                   <button
                     onClick={() => scrollToSection('misi')}
                     className="px-4 text-white font-semibold uppercase tracking-wider text-xs hover:text-yellow-400 transition-colors"
                   >
                     Mission
                   </button>
-
                   <div className="flex-1 h-[2px] bg-yellow-400" />
-
                   <img
                     src="/webp/bella-mascot.webp"
                     alt="Bella Mascot"
                     className="h-12 w-auto mx-4"
                   />
-
                   <div className="flex-1 h-[2px] bg-yellow-400" />
-
                   <button
                     onClick={() => scrollToSection('timeline')}
                     className="px-4 text-white font-semibold uppercase tracking-wider text-xs hover:text-yellow-400 transition-colors"
                   >
                     Timeline
                   </button>
-
                   <div className="flex-1 h-[2px] bg-yellow-400" />
-
                   <button
                     onClick={() => scrollToSection('gallery')}
                     className="px-4 text-white font-semibold uppercase tracking-wider text-xs hover:text-yellow-400 transition-colors"
@@ -161,6 +202,14 @@ export default function Navbar({
                         <p className="text-sm text-gray-500">NRP : {userProfile.nrp}</p>
                         <p className="text-xs text-gray-400">Score: {userProfile.total_score || 0}</p>
                       </div>
+                      {/* Change Name anchor */}
+                      <button
+                        onClick={openChangeNameModal}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4 mr-2 text-gray-400" />
+                        Change Name
+                      </button>
                       <button
                         onClick={openLogoutConfirm}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -209,9 +258,20 @@ export default function Navbar({
               <p className="text-xs text-gray-300">NRP: {userProfile.nrp}</p>
               <p className="text-xs text-gray-400">Score: {userProfile.total_score || 0}</p>
             </div>
+            {/* Change Name — mobile sidebar */}
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                openChangeNameModal();
+              }}
+              className="mt-2 flex items-center text-gray-300 hover:text-white transition space-x-2"
+            >
+              <Pencil className="w-4 h-4" />
+              <span className="text-sm font-semibold uppercase">Change Name</span>
+            </button>
             <button
               onClick={openLogoutConfirm}
-              className="mt-4 flex items-center text-red-500 hover:text-red-400 transition space-x-2"
+              className="mt-2 flex items-center text-red-500 hover:text-red-400 transition space-x-2"
             >
               <LogOut className="w-5 h-5" />
               <span className="text-sm font-semibold uppercase">Logout</span>
@@ -254,6 +314,7 @@ export default function Navbar({
         )}
       </div>
 
+      {/* Logout Confirm Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -274,6 +335,82 @@ export default function Navbar({
                 className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
               >
                 Yes, Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Name Modal */}
+      {showChangeNameModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="relative bg-gradient-to-b from-[#47618a] to-[#E3E1DA] rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            {/* Close button */}
+            <button
+              onClick={() => setShowChangeNameModal(false)}
+              className="absolute top-3 right-3 text-white/60 hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-2 mb-5">
+              <Pencil className="w-5 h-5 text-[#FFD700]" />
+              <h3 className="text-lg font-semibold text-white tracking-wide">Change Name</h3>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <User className="h-5 w-5 text-[#DADBD3]/60" />
+                </span>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                    setNameUpdateError('');
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && !isUpdatingName && handleChangeName()}
+                  placeholder="New name"
+                  disabled={isUpdatingName || nameUpdateSuccess}
+                  className="w-full pl-10 pr-3 py-2 rounded-lg bg-[#0c1015] text-[#DADBD3] placeholder-[#DADBD3]/50 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] transition-all duration-300 disabled:opacity-50"
+                />
+              </div>
+
+              {nameUpdateError && (
+                <p className="text-red-300 text-xs flex items-center space-x-1">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{nameUpdateError}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-2 mt-5">
+              <button
+                onClick={() => setShowChangeNameModal(false)}
+                disabled={isUpdatingName}
+                className="px-4 py-2 text-sm text-[#0f1028]/80 hover:text-[#0f1028] bg-white/20 hover:bg-white/40 rounded-md transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleChangeName}
+                disabled={isUpdatingName || nameUpdateSuccess}
+                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-[#ece7d8] bg-gradient-to-b from-[#0a0007] to-[#0f1028] rounded-md focus:outline-none focus:ring-2 focus:ring-[#FFD700] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {isUpdatingName ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Updating...</span>
+                  </>
+                ) : nameUpdateSuccess ? (
+                  <>
+                    <Check className="w-4 h-4 text-green-400" />
+                    <span className="text-green-400">Updated!</span>
+                  </>
+                ) : (
+                  <span>Update</span>
+                )}
               </button>
             </div>
           </div>
